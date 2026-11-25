@@ -259,6 +259,7 @@ async function initBackend(){
     watchQ: (c, wh, cb, err) => F.onSnapshot(q(c, wh), s => cb(s.docs.map(sd)), err || (()=>{})),
     batch: async ops => { const b = F.writeBatch(db); ops.forEach(o => o.del ? b.delete(ref(o.p)) : b.set(ref(o.p), pack(o.d), o.merge ? {merge:true} : {})); await b.commit() },
     ts: d => d ? F.Timestamp.fromDate(d) : null, now: () => F.serverTimestamp(),
+    count: async c => (await F.getCountFromServer(col(c))).data().count,
   };
 }
 const toDate = t => !t ? null : t.toDate ? t.toDate() : t.seconds ? new Date(t.seconds*1000) : new Date(t);
@@ -406,24 +407,22 @@ async function loadProb(){
   let body = `<div class="pq">${paras(P.st)}</div>`, needSelf = false, solLocked = locked;
   if (P.y === 'mc' && P.opts) {
     const chosen = rec && rec.a, key = P.ans;
-    body += `<div class="opts">${P.opts.map(o => { let c = ''; if (staff && key === o.k) c = 'ok';
-      else if (chosen) { if (key) { if (o.k === key) c = 'ok'; else if (o.k === chosen) c = 'bad' } else if (o.k === chosen) c = 'pick' }
-      return `<button class="opt ${c}" data-ans="${o.k}" ${staff||chosen?'disabled':''}><b>${o.k}</b><span>${M(o.h)}</span></button>` }).join('')}</div>`;
-    if (!staff && chosen && key) body += `<p class="verdict ${chosen===key?'ok':'bad'}">${chosen===key?'Chính xác!':'Chưa đúng. Đáp án đúng là '+key+'.'}</p><button class="btn sm" data-redo>Làm lại</button>`;
-    if (staff && key) body += `<p class="hint">Đáp án: <b>${key}</b></p>`;
-    if (!staff && !chosen) solLocked = true; needSelf = !staff && chosen && !key;
+    body += `<div class="opts">${P.opts.map(o => { let c = '';
+      if (chosen) { if (key) { if (o.k === key) c = 'ok'; else if (o.k === chosen) c = 'bad' } else if (o.k === chosen) c = 'pick' }
+      return `<button class="opt ${c}" data-ans="${o.k}" ${chosen?'disabled':''}><b>${o.k}</b><span>${M(o.h)}</span></button>` }).join('')}</div>`;
+    if (chosen && key) body += `<p class="verdict ${chosen===key?'ok':'bad'}">${chosen===key?'Chính xác!':'Chưa đúng. Đáp án đúng là '+key+'.'}</p><button class="btn sm" data-redo>Làm lại</button>`;
+    if (!chosen) solLocked = true; needSelf = !!chosen && !key;
   } else if (P.y === 'ds' && P.items) {
     const key = P.ans || '', mine = answered ? rec.a : (S.pick[pid] || {});
     body += `<div class="opts">${P.items.map((it,i) => { const v = answered ? mine[i] : mine[it.k]; const kv = key[i];
       const cls = answered && key ? (v === kv ? 'ok' : 'bad') : '';
-      return `<div class="opt dsrow ${cls}" style="cursor:default"><b>${it.k}</b><span style="flex:1">${M(it.h)}</span>${staff ? (kv?`<span class="tag">${kv==='Đ'?'Đúng':'Sai'}</span>`:'') :
+      return `<div class="opt dsrow ${cls}" style="cursor:default"><b>${it.k}</b><span style="flex:1">${M(it.h)}</span>${
         `<span class="seg" style="margin:0"><button data-dsi="${it.k}" data-dsv="Đ" aria-pressed="${v==='Đ'}" ${answered?'disabled':''}>Đúng</button><button data-dsi="${it.k}" data-dsv="S" aria-pressed="${v==='S'}" ${answered?'disabled':''}>Sai</button></span>`}</div>` }).join('')}</div>`;
-    if (!staff && !answered) { body += `<button class="btn pri" data-dssubmit ${P.items.every(it=>mine[it.k])?'':'disabled'}>Nộp bài</button>`; solLocked = true }
-    if (!staff && answered && key) { const n = P.items.filter((it,i)=>rec.a[i]===key[i]).length; body += `<p class="verdict ${n===P.items.length?'ok':'bad'}">Đúng ${n}/${P.items.length} ý.${n<P.items.length?' Đáp án: '+P.items.map((it,i)=>it.k+') '+(key[i]==='Đ'?'Đúng':'Sai')).join('; '):''}</p><button class="btn sm" data-redo>Làm lại</button>` }
-    needSelf = !staff && answered && !key;
+    if (!answered) { body += `<button class="btn pri" data-dssubmit ${P.items.every(it=>mine[it.k])?'':'disabled'}>Nộp bài</button>`; solLocked = true }
+    if (answered && key) { const n = P.items.filter((it,i)=>rec.a[i]===key[i]).length; body += `<p class="verdict ${n===P.items.length?'ok':'bad'}">Đúng ${n}/${P.items.length} ý.${n<P.items.length?' Đáp án: '+P.items.map((it,i)=>it.k+') '+(key[i]==='Đ'?'Đúng':'Sai')).join('; '):''}</p><button class="btn sm" data-redo>Làm lại</button>` }
+    needSelf = answered && !key;
   } else if (P.y === 'tln') {
-    if (staff) { if (P.ans) body += `<p class="hint">Đáp án: <b>${M(P.ans)}</b></p>` }
-    else if (!answered) { body += `<form id="tlnf" class="row" style="margin:12px 0"><input type="text" id="tlnv" placeholder="Nhập kết quả" style="max-width:260px" autocomplete="off"><button class="btn pri">Nộp</button></form><p class="hint">Số thập phân dùng dấu phẩy, phân số viết dạng a/b.</p>`; solLocked = true }
+    if (!answered) { body += `<form id="tlnf" class="row" style="margin:12px 0"><input type="text" id="tlnv" placeholder="Nhập kết quả" style="max-width:260px" autocomplete="off"><button class="btn pri">Nộp</button></form><p class="hint">Số thập phân dùng dấu phẩy, phân số viết dạng a/b.</p>`; solLocked = true }
     else { body += `<p>Bạn trả lời: <b>${esc(rec.a)}</b></p>`;
       if (P.ans) body += `<p class="verdict ${rec.s===1?'ok':'bad'}">${rec.s===1?'Chính xác!':'Chưa đúng.'} Đáp án: ${M(P.ans)}</p>`;
       body += `<button class="btn sm" data-redo>Làm lại</button>`; needSelf = !P.ans }
@@ -475,7 +474,7 @@ async function loadTheory(bid){ if (S.tnth[bid]) return; const d = await safe(()
 
 /* ---------------- progress ---------------- */
 let wq = Promise.resolve();
-function saveProg(){ const body = JSON.parse(JSON.stringify(S.prog)); body.upd = Date.now(); body.name = S.me.name; body.classId = S.me.classId || null; body.teacherUid = S.me.teacherUid || null;
+function saveProg(){ if (isStaff()) return; const body = JSON.parse(JSON.stringify(S.prog)); body.upd = Date.now(); body.name = S.me.name; body.classId = S.me.classId || null; body.teacherUid = S.me.teacherUid || null;
   wq = wq.then(() => S.B.set('progress/' + S.au.uid, body)).catch(e => note('Không lưu được kết quả (' + errMsg(e) + ').')) }
 function record(pid, rec){ S.prog.done = S.prog.done || {}; if (rec) S.prog.done[pid] = {...rec, t: Date.now()}; else delete S.prog.done[pid]; saveProg() }
 
@@ -552,8 +551,9 @@ async function saveAssign(f){
     await batchChunks(ps); return true }, 'Không lưu được bài giao');
   if (ok) { S.editAsg = null; S.sel.clear(); flash('Đã giao bài "' + body.title + '".'); render() } }
 async function batchChunks(ops, prog){ let cur = [], size = 0, done = 0;
-  for (const o of ops) { const sz = o.d ? new Blob([JSON.stringify(o.d)]).size : 100; if (cur.length && (cur.length >= 100 || size + sz > 1.5e6)) { await S.B.batch(cur); done += cur.length; prog && prog(done); cur = []; size = 0 } cur.push(o); size += sz }
-  if (cur.length) { await S.B.batch(cur); done += cur.length; prog && prog(done) } }
+  const commit = async b => { for (let i = 0; ; i++) { try { await S.B.batch(b); return } catch(e) { const c = (e && e.code) || ''; if (i >= 3 || /resource-exhausted|permission|invalid/.test(c)) throw e; await new Promise(r => setTimeout(r, 1500 * (i + 1))) } } };
+  for (const o of ops) { const sz = o.d ? new Blob([JSON.stringify(o.d)]).size : 100; if (cur.length && (cur.length >= 100 || size + sz > 1.5e6)) { await commit(cur); done += cur.length; prog && await prog(done); cur = []; size = 0 } cur.push(o); size += sz }
+  if (cur.length) { await commit(cur); done += cur.length; prog && await prog(done) } }
 
 /* ---------------- staff: tracking ---------------- */
 function renderTrack(){
@@ -610,8 +610,9 @@ function renderAdmin(){
   $('#app').innerHTML = wrap1(`<div class="paper"><h1>Gói & dữ liệu</h1>
    <div class="card"><h3>Gói Cơ bản</h3><form id="planf" class="row"><label for="bn">Mở</label><input type="number" id="bn" class="num-in" min="0" max="300" value="${S.cfg.basicN}"><span>câu đầu <b>mỗi loại</b> (tự luận / nhiều lựa chọn / đúng-sai / trả lời ngắn) của từng dạng</span><button class="btn sm pri" ${S.idx?'':'disabled'}>Áp dụng</button></form>
    <p class="hint">Hiện mở ${open}/${total} bài cho Gói Cơ bản. Gói Full mở toàn bộ. Đổi số này sẽ cập nhật lại toàn bộ bài (mất 1–2 phút).</p></div>
-   <div class="card"><h3>Nạp dữ liệu bài học</h3><p class="hint">Chọn file <code>du_lieu_toan9.json</code> (kèm theo web). Nạp lại sẽ ghi đè bài cũ cùng mã, không mất tiến độ của học sinh.</p>
-   <input type="file" id="imp" accept=".json,application/json"><div id="impst" class="hint" style="margin-top:8px">${S.idx?`Đã có dữ liệu phiên bản ${esc(S.idx.version||'')}: ${S.idx.topics.length} chủ đề tự luận, ${(S.idx.tn||[]).length} chương trắc nghiệm, ${total} bài/câu.`:'Chưa có dữ liệu.'}</div></div>
+   <div class="card"><h3>Nạp dữ liệu bài học</h3><p class="hint">Chọn file <code>du_lieu_toan9.json</code>. Nếu lần trước bị dừng giữa chừng, chọn lại file là web tự nạp tiếp từ chỗ dừng. Firebase miễn phí cho 20.000 lượt ghi mỗi ngày.</p>
+   <div class="row"><input type="file" id="imp" accept=".json,application/json"><label class="checks"><label><input type="checkbox" id="impfresh"> Nạp lại từ đầu</label></label></div>
+   <div class="row" style="margin-top:8px"><button type="button" class="btn sm" data-count>Kiểm tra số bài trên máy chủ</button><span id="cnt" class="hint"></span></div><div id="impst" class="hint" style="margin-top:8px">${S.idx?`Đã có dữ liệu phiên bản ${esc(S.idx.version||'')}: ${S.idx.topics.length} chủ đề tự luận, ${(S.idx.tn||[]).length} chương trắc nghiệm, ${total} bài/câu.`:'Chưa có dữ liệu.'}</div></div>
    <div class="card"><h3>Admin</h3><p>${ADMIN_EMAILS.map(esc).join(', ')}</p><p class="hint">Danh sách Admin đặt trong file index.html và firestore.rules.</p></div></div>`, 1000) }
 function allDangs(idx){ const L = []; idx.topics.forEach(t=>t.dangs.forEach(d=>L.push(d))); (idx.tn||[]).forEach(c=>c.bais.forEach(b=>b.dangs.forEach(d=>L.push(d)))); return L }
 function flagIndex(idx, n){ for (const d of allDangs(idx)) { const c = {}; for (const it of d.items) { c[it[1]] = c[it[1]] || 0; it[2] = c[it[1]] < n ? 1 : 0; c[it[1]]++ } } }
@@ -621,13 +622,31 @@ async function importData(file){
   if (!J.index || !J.problems) { st.textContent = 'File không phải dữ liệu bài học.'; return }
   flagIndex(J.index, S.cfg.basicN);
   const bmap = {}; allDangs(J.index).forEach(d=>d.items.forEach(it=>bmap[it[0]]=!!it[2]));
-  const ops = Object.entries(J.problems).map(([pid,p]) => ({p:'problems/'+pid, d:{...p, basic: bmap[pid]||false}}));
-  Object.entries(J.tnth||{}).forEach(([bid,v]) => ops.push({p:'tnth/'+bid, d:v}));
-  const old = S.idx ? allDangs(S.idx).flatMap(d=>d.items.map(it=>it[0])).filter(p=>!J.problems[p]) : [];
-  old.forEach(p => ops.push({p:'problems/'+p, del:1}));
-  st.textContent = `Đang nạp ${ops.length} bài…`;
-  const ok = await safe(async () => { await batchChunks(ops, n => st.textContent = `Đang nạp: ${n}/${ops.length} bài…`); await S.B.set('meta/index', J.index); return true }, 'Nạp dữ liệu lỗi');
-  if (ok) { st.textContent = `Xong: đã nạp ${ops.length} bài.`; flash('Nạp dữ liệu thành công.') } }
+  const ops = Object.keys(J.problems).sort().map(pid => ({p:'problems/'+pid, d:{...J.problems[pid], basic: bmap[pid]||false}}));
+  Object.keys(J.tnth||{}).sort().forEach(bid => ops.push({p:'tnth/'+bid, d:J.tnth[bid]}));
+  const ver = J.index.version || 'v';
+  let start = 0;
+  const mk = await safe(() => S.B.get('meta/import'));
+  if (mk && mk.version === ver && mk.n > 0 && mk.n < ops.length && !$('#impfresh').checked) start = mk.n;
+  st.textContent = start ? `Tiếp tục từ bài ${start}/${ops.length}…` : `Đang nạp ${ops.length} bài…`;
+  try {
+    await batchChunks(ops.slice(start), async n => { const k = start + n; st.textContent = `Đang nạp: ${k}/${ops.length} bài… (đừng đóng trang)`; await S.B.set('meta/import', {version: ver, n: k}) });
+    const keepIds = new Set([...Object.keys(J.problems)]);
+    const old = S.idx ? allDangs(S.idx).flatMap(d=>d.items.map(it=>it[0])).filter(p=>!keepIds.has(p)) : [];
+    if (old.length) { st.textContent = `Đang xoá ${old.length} bài cũ…`; await batchChunks(old.map(p=>({p:'problems/'+p, del:1}))) }
+    await S.B.set('meta/index', J.index);
+    await S.B.set('meta/import', {version: ver, n: ops.length});
+    st.textContent = `Xong: đã nạp đủ ${ops.length} bài.`; flash('Nạp dữ liệu thành công.'); checkCount();
+  } catch(e) {
+    const c = (e && e.code) || '';
+    const cur = await safe(() => S.B.get('meta/import')); const k = cur && cur.n || start;
+    st.textContent = /resource-exhausted/.test(c)
+      ? `Đã nạp ${k}/${ops.length} bài thì hết hạn mức ghi miễn phí trong ngày của Firebase. Ngày mai chọn lại file để nạp tiếp phần còn lại.`
+      : `Dừng ở ${k}/${ops.length} bài (${c||e.message}). Chọn lại file để nạp tiếp từ chỗ dừng.`;
+  } }
+async function checkCount(){ const el = $('#cnt'); if (!el || !S.B.count) return; el.textContent = 'Đang đếm…';
+  const n = await safe(() => S.B.count('problems')); const want = S.idx ? allDangs(S.idx).reduce((u,d)=>u+d.items.length,0) : 0;
+  if (n !== false) el.innerHTML = `Trên máy chủ có <b>${n}</b> bài${want?` / cần ${want}`:''}.${want && n < want ? ' Thiếu bài: chọn lại file để nạp tiếp.' : ''}` }
 async function applyBasic(n){
   const idx = JSON.parse(JSON.stringify(S.idx)); flagIndex(idx, n);
   const ops = []; allDangs(idx).forEach(d=>d.items.forEach(it=>ops.push({p:'problems/'+it[0], d:{basic:!!it[2]}, merge:1})));
@@ -682,6 +701,7 @@ document.addEventListener('click', async e => {
   if (D.block) { await safe(() => S.B.update('users/'+D.block, {status:'blocked'}), 'Không khoá được'); return }
   if (D.delcls) { if (!t.dataset.sure) { t.dataset.sure = 1; t.textContent = 'Bấm lần nữa để xoá lớp'; return } await safe(() => S.B.del('classes/'+D.delcls), 'Không xoá được lớp'); return }
   if (D.flt) { S.flt = D.flt; render(); return }
+  if ('count' in D) { checkCount(); return }
   if ('usave' in D || 'uapprove' in D) { const tr = t.closest('tr'); const v = rowVals(tr); if ('uapprove' in D) v.status = 'active';
     if (await safe(() => S.B.update('users/'+tr.dataset.uid, v), 'Không lưu được')) flash('Đã lưu.'); return }
   if ('bulkapprove' in D || D.bulkplan) { t.disabled = true; const rows = [...document.querySelectorAll('tr[data-uid]')]; let n = 0;
