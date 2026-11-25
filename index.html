@@ -332,6 +332,18 @@ table{font-size:14px}th{font-weight:600}
  .dg[aria-current=true]{border-left-color:transparent;border-bottom:3px solid var(--chalk)}
 }
 @media(prefers-reduced-motion:reduce){.tc{transition:none}.tc:hover{transform:none}}
+.mini{border:0;background:none;color:var(--blue);font-weight:600;font-size:13.5px;padding:4px 6px;border-radius:8px;min-height:32px}
+.mini:hover{background:var(--blue-soft)}
+.side .mini{display:block;margin:-4px 0 8px 4px}
+.dg.add{color:var(--blue);border:1px dashed color-mix(in srgb,var(--blue) 40%,var(--line));margin-top:8px;text-align:center}
+.dropf input[type=file]{font-size:14px}
+.impit{border-top:1px solid var(--line);padding:12px 0}
+.impit.off{opacity:.45}
+.impit textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;margin:4px 0 8px}
+.opts.sm .opt{min-height:0;padding:6px 10px;font-size:15px}
+.stick{position:sticky;bottom:12px;background:var(--paper);padding:10px;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin-top:16px}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--blue);border-radius:50%;animation:sp 1s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
 
 </style>
 </head>
@@ -395,6 +407,7 @@ const S = {B:null, au:null, me:null, idx:null, idxs:{}, grade: savedGrade() || 9
   classes:[], users:[], progAll:{}, asg:[], sel:new Set(), topic:null, dang:null, typ:'tl', pid:null, asgId:null,
   openSol:false, ch:null, bai:null, ttyp:'mc', tnth:{}, pick:{}, flt:'pending', q:'', trackCls:'', trackAsg:null, editAsg:null, subs:[]};
 
+window.__S = S;
 /* ---------------- backend ---------------- */
 async function initBackend(){
   if (window.__MOCKB) return window.__MOCKB;
@@ -464,7 +477,7 @@ function label(pid){ const m = S.P[pid]; if (!m) return pid; const I = idxOfM(m)
   if (m.k === 'tn') { const b = baiById(m.bai, I), c = chById(m.t, I); return `${gl}C${I.tn.indexOf(c)+1} · Bài ${b.no} · D${b.dangs.indexOf(d)+1} · ${TYPES[m.y]} ${k}` }
   const t = topicById(m.t, I); return `${gl}${shortOf(t, I)} · D${t.dangs.indexOf(d)+1} · TL ${k}` }
 function setGrade(g){ g = +g; if (!GRADES.includes(g)) return; S.grade = g; S.idx = S.idxs[g] || null;
-  S.topic = S.dang = S.ch = S.bai = S.pid = null; S.ed = null; try { localStorage.setItem('ot_grade', g) } catch(e) {} render(); scrollTo(0,0) }
+  S.topic = S.dang = S.ch = S.bai = S.pid = null; S.ed = S.sf = S.imp = null; try { localStorage.setItem('ot_grade', g) } catch(e) {} render(); scrollTo(0,0) }
 const hasData = g => !!(S.idxs[g] && (S.idxs[g].topics||[]).length + (S.idxs[g].tn||[]).length);
 const stat = (prog, pid) => prog && prog.done && prog.done[pid] ? prog.done[pid].s : 0;
 const myAsgs = () => S.asg.filter(a => role()==='student' ? a.classId === S.me.classId : true);
@@ -476,7 +489,7 @@ function tabsFor(){ const r = role();
   if (r === 'teacher') return [['kho','Tự luận'],['khotn','Trắc nghiệm'],['lop','Lớp & học sinh'],['giao','Giao bài'],['theodoi','Theo dõi']];
   return [['baigiao','Bài được giao'],['ontap','Tự luận'],['tracnghiem','Trắc nghiệm'],['ketqua','Kết quả']] }
 const curView = () => { const ok = tabsFor().map(t=>t[0]); const h = location.hash.slice(1); return ok.includes(h) ? h : ok[0] };
-function go(v){ S.pid=null; S.asgId=null; S.ed=null; if (location.hash.slice(1) !== v) location.hash = v; else render() }
+function go(v){ S.pid=null; S.asgId=null; S.ed=null; S.sf=null; S.imp=null; if (location.hash.slice(1) !== v) location.hash = v; else render() }
 window.addEventListener('hashchange', () => render());
 const wrap1 = (h, w) => `<div class="wrap" style="grid-template-columns:minmax(0,1fr);max-width:${w||1100}px">${h}</div>`;
 const LOGO = '<svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#F2C14E"/><path d="M6.5 17.5h3.2l3.6 7.5 6.2-16.5h6" fill="none" stroke="#16302A" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -550,33 +563,35 @@ async function findClass(code){ code = (code||'').trim().toUpperCase(); if (!cod
 /* ---------------- learn (kho bài / ôn tập) ---------------- */
 function renderLearn(){
   const staff = isStaff();
-  if (S.ed && S.ed.k === 'tl' && $('#edbox')) return;
+  if (busy() && $('#edbox')) return;
+  if (busy() && (!S.topic || !topicById(S.topic))) { $('#app').innerHTML = wrap1('<div class="paper" id="edbox"></div>', 1000); panelDraw(); return }
+  if (S.topic && !topicById(S.topic)) S.topic = null;
   if (!S.topic){
     const cards = S.idx.topics.map((t,i) => { const its = t.dangs.flatMap(d=>d.items); const tn = 0;
       const done = staff ? 0 : its.filter(x=>stat(S.prog,x[0])).length;
       return `<button class="tc" data-topic="${t.id}"><span class="no">Chủ đề ${i+1}</span><b>${esc(t.name)}</b><small>${t.dangs.length} dạng · ${its.length} bài tự luận${staff?'':' · đã làm '+done}</small>${staff?'':`<div class="meter"><i style="width:${its.length?done/its.length*100:0}%"></i></div>`}</button>` }).join('');
     const plan = staff ? '' : `<p class="hint">${isFull()?'Bạn đang dùng <b>Gói Full</b>: mở toàn bộ bài tập.':`Bạn đang dùng <b>Gói Cơ bản</b>: mở ${S.cfg.basicN} bài đầu mỗi loại của từng dạng, cùng các bài được giao. Liên hệ Admin để nâng cấp Gói Full.`}</p>`;
-    $('#app').innerHTML = wrap1(`<div class="paper"><div class="kick">Toán ${S.grade}</div><h1>${staff?'Kho bài tự luận':'Tự luận theo chủ đề'}</h1>${plan}<div class="topics">${cards}</div></div>`, 1300); return }
-  const T = topicById(S.topic); if (!S.dang || !T.dangs.some(d=>d.id===S.dang)) S.dang = T.dangs[0].id;
+    $('#app').innerHTML = wrap1(`<div class="paper"><div class="row sp"><div><div class="kick">Toán ${S.grade}</div><h1>${staff?'Kho bài tự luận':'Tự luận theo chủ đề'}</h1></div>${isAdminR()?'<button class="btn pri" data-sfnew="topic">+ Thêm chủ đề</button>':''}</div>${plan}<div class="topics">${cards}</div></div>`, 1300); return }
+  const T = topicById(S.topic); if (!S.dang || !T.dangs.some(d=>d.id===S.dang)) S.dang = T.dangs[0] ? T.dangs[0].id : null;
   const d = T.dangs.find(x=>x.id===S.dang);
-  const side = `<button class="back" data-alltopics>← Tất cả chủ đề</button><h3>${esc(T.name)}</h3>` + T.dangs.map((x,i) => { const n = x.items.length, done = x.items.filter(p=>stat(S.prog,p[0])).length;
-    return `<button class="dg" data-dang="${x.id}" aria-current="${S.dang===x.id}">Dạng ${i+1}. ${M(x.name)}<small>${n} bài${staff?'':' · đã làm '+done}</small>${staff?'':`<div class="meter"><i style="width:${n?done/n*100:0}%"></i></div>`}</button>` }).join('');
-  const main = S.ed ? '<div class="paper" id="edbox"></div>' : S.pid && !S.asgId ? probShell() : dangHTML(T, d);
+  const side = `<button class="back" data-alltopics>← Tất cả chủ đề</button><h3>${esc(T.name)}</h3>${isAdminR()?`<button class="mini" data-sfedit="topic" data-ref="${T.id}">✏️ Sửa chủ đề</button>`:''}` + T.dangs.map((x,i) => { const n = x.items.length, done = x.items.filter(p=>stat(S.prog,p[0])).length;
+    return `<button class="dg" data-dang="${x.id}" aria-current="${S.dang===x.id}">Dạng ${i+1}. ${M(x.name)}<small>${n} bài${staff?'':' · đã làm '+done}</small>${staff?'':`<div class="meter"><i style="width:${n?done/n*100:0}%"></i></div>`}</button>` }).join('') + (isAdminR()?`<button class="dg add" data-sfnew="dang" data-ref="${T.id}">+ Thêm dạng</button>`:'');
+  const main = busy() ? '<div class="paper" id="edbox"></div>' : S.pid && !S.asgId ? probShell() : d ? dangHTML(T, d) : `<div class="paper"><h1>${esc(T.name)}</h1><p class="empty">Chủ đề chưa có dạng nào.</p></div>`;
   $('#app').innerHTML = `<div class="wrap"><aside class="side">${side}</aside><section id="main">${main}</section></div>`;
-  if (S.ed) edDraw(); else if (S.pid && !S.asgId) loadProb();
+  if (busy()) panelDraw(); else if (S.pid && !S.asgId) loadProb();
 }
 function dangHTML(T, d){
   const i = T.dangs.indexOf(d)+1, staff = isStaff();
-  const th = `<div class="kick">${esc(T.name)} · ${esc(T.sgk)}</div><h1>Dạng ${i}. ${M(d.name)}</h1>
-   <div class="th"><p><span class="lbl">Dấu hiệu nhận ra.</span> ${M(d.sign)}</p>${d.fig?`<div class="fig">${d.fig}</div>`:''}
-   <p class="lbl">Các bước làm</p><ol>${d.steps.map(s=>`<li>${M(s)}</li>`).join('')}</ol>
-   <p class="lbl">Kiến thức dùng</p><ul>${d.know.map(s=>`<li>${M(s)}</li>`).join('')}</ul>
-   <p class="lbl">Lưu ý, sai lầm hay gặp</p><ul>${d.warn.map(s=>`<li>${M(s)}</li>`).join('')}</ul>
+  const th = `<div class="row sp"><div class="kick">${esc(T.name)}${T.sgk?' · '+esc(T.sgk):''}</div>${isAdminR()?`<button class="mini" data-sfedit="dang" data-ref="${d.id}">✏️ Sửa dạng</button>`:''}</div><h1>Dạng ${i}. ${M(d.name)}</h1>
+   <div class="th">${d.sign?`<p><span class="lbl">Dấu hiệu nhận ra.</span> ${M(d.sign)}</p>`:''}${d.fig?`<div class="fig">${d.fig}</div>`:''}
+   ${(d.steps||[]).length?`<p class="lbl">Các bước làm</p><ol>${d.steps.map(s=>`<li>${M(s)}</li>`).join('')}</ol>`:''}
+   ${(d.know||[]).length?`<p class="lbl">Kiến thức dùng</p><ul>${d.know.map(s=>`<li>${M(s)}</li>`).join('')}</ul>`:''}
+   ${(d.warn||[]).length?`<p class="lbl">Lưu ý, sai lầm hay gặp</p><ul>${d.warn.map(s=>`<li>${M(s)}</li>`).join('')}</ul>`:''}
    ${d.ex?`<details class="ex"><summary>Ví dụ mẫu</summary><p>${M(d.ex.q)}</p>${d.ex.a.map(s=>`<p>${M(s)}</p>`).join('')}</details>`:''}</div>`;
   const list = d.items;
   const chips = list.map((x,k) => { const p = x[0], s = staff ? 0 : stat(S.prog,p), lk = !canSee(p);
     return `<button class="chip ${s?'s'+s:''} ${lk?'lock':''} ${staff&&S.sel.has(p)?'sel':''}" data-pid="${p}" aria-label="Bài ${k+1}${lk?', thuộc Gói Full':''}">${k+1}</button>` }).join('');
-  const tools = staff ? `<div class="row"><span class="hint">Bấm số bài để xem và chọn giao.</span><button class="btn sm" data-selall="${d.id}" data-styp="tl">Chọn cả dạng</button><button class="btn sm" data-rand="${d.id}" data-styp="tl">Chọn ngẫu nhiên 5 bài</button>${isAdminR()?`<button class="btn sm pri" data-padd="${d.id}" data-ptyp="tl">+ Thêm bài</button>`:''}</div>`
+  const tools = staff ? `<div class="row"><span class="hint">Bấm số bài để xem và chọn giao.</span><button class="btn sm" data-selall="${d.id}" data-styp="tl">Chọn cả dạng</button><button class="btn sm" data-rand="${d.id}" data-styp="tl">Chọn ngẫu nhiên 5 bài</button>${isAdminR()?`<button class="btn sm pri" data-padd="${d.id}" data-ptyp="tl">+ Thêm bài</button><button class="btn sm" data-impdang="${d.id}">📄 Nhập bài từ file</button>`:''}</div>`
     : `<div class="legend"><span class="l1">${ST[1]}</span><span class="l2">${ST[2]}</span><span class="l3">${ST[3]}</span><span>Chưa làm</span>${isFull()?'':'<span>🔒 Gói Full</span>'}</div>`;
   return `<div class="paper">${th}<h2>Bài tập (${list.length})</h2>${tools}<div class="chips">${chips}</div></div>`;
 }
@@ -643,20 +658,23 @@ function normAns(v){ let s = String(v).replace(/\\\(|\\\)/g,'').normalize('NFC')
 function tnCounts(items){ const c = {mc:0, ds:0, tln:0}; items.forEach(x => c[x[1]]++); return c }
 function renderTN(){
   const staff = isStaff();
-  if (S.ed && S.ed.k === 'tn' && $('#edbox')) return;
-  if (!S.idx.tn || !S.idx.tn.length) { $('#app').innerHTML = wrap1('<div class="paper"><h1>Trắc nghiệm</h1><p class="empty">Chưa có dữ liệu trắc nghiệm. Admin cần nạp lại file dữ liệu mới.</p></div>'); return }
+  if (busy() && $('#edbox')) return;
+  if (busy() && !(S.idx.tn||[]).length) { $('#app').innerHTML = wrap1('<div class="paper" id="edbox"></div>', 1000); panelDraw(); return }
+  if (!S.idx.tn || !S.idx.tn.length) { $('#app').innerHTML = wrap1(`<div class="paper"><h1>Trắc nghiệm</h1><p class="empty">Lớp ${S.grade} chưa có câu trắc nghiệm.</p>${isAdminR()?'<button class="btn pri" data-sfnew="ch">+ Thêm chương</button>':''}</div>`); return }
+  if (busy() && (!S.ch || !chById(S.ch))) { $('#app').innerHTML = wrap1('<div class="paper" id="edbox"></div>', 1000); panelDraw(); return }
+  if (S.ch && !chById(S.ch)) S.ch = null;
   if (!S.ch) {
     const cards = S.idx.tn.map((c,i) => { const its = c.bais.flatMap(b=>b.dangs.flatMap(d=>d.items)); const n = tnCounts(its);
       const done = staff ? 0 : its.filter(x=>stat(S.prog,x[0])).length;
       return `<button class="tc" data-ch="${c.id}"><span class="no">Chương ${i+1}</span><b>${esc(c.name.replace(/^Chương \d+\.\s*/,''))}</b><small>${c.bais.length} bài · ${n.mc} nhiều lựa chọn · ${n.ds} đúng/sai · ${n.tln} trả lời ngắn${staff?'':' · đã làm '+done}</small>${staff?'':`<div class="meter"><i style="width:${its.length?done/its.length*100:0}%"></i></div>`}</button>` }).join('');
-    $('#app').innerHTML = wrap1(`<div class="paper"><div class="kick">Toán ${S.grade}</div><h1>${staff?'Kho trắc nghiệm':'Trắc nghiệm theo chương'}</h1><p class="hint">Ba dạng câu hỏi theo cấu trúc mới: nhiều lựa chọn, đúng/sai, trả lời ngắn. Mỗi câu có mức độ Nhận biết – Thông hiểu – Vận dụng – Vận dụng cao.</p><div class="topics">${cards}</div></div>`, 1300); return }
-  const C = chById(S.ch); if (!S.bai || !C.bais.some(b=>b.id===S.bai)) S.bai = C.bais[0].id;
+    $('#app').innerHTML = wrap1(`<div class="paper"><div class="row sp"><div><div class="kick">Toán ${S.grade}</div><h1>${staff?'Kho trắc nghiệm':'Trắc nghiệm theo chương'}</h1></div>${isAdminR()?'<button class="btn pri" data-sfnew="ch">+ Thêm chương</button>':''}</div><p class="hint">Ba dạng câu hỏi theo cấu trúc mới: nhiều lựa chọn, đúng/sai, trả lời ngắn. Mỗi câu có mức độ Nhận biết – Thông hiểu – Vận dụng – Vận dụng cao.</p><div class="topics">${cards}</div></div>`, 1300); return }
+  const C = chById(S.ch); if (!S.bai || !C.bais.some(b=>b.id===S.bai)) S.bai = C.bais[0] ? C.bais[0].id : null;
   const B = C.bais.find(b=>b.id===S.bai);
-  const side = `<button class="back" data-allch>← Tất cả chương</button><h3>${esc(C.name)}</h3>` + C.bais.map(b => { const its = b.dangs.flatMap(d=>d.items), done = its.filter(x=>stat(S.prog,x[0])).length;
-    return `<button class="dg" data-bai="${b.id}" aria-current="${S.bai===b.id}">${M(esc(b.name))}<small>${its.length} câu${staff?'':' · đã làm '+done}</small>${staff?'':`<div class="meter"><i style="width:${its.length?done/its.length*100:0}%"></i></div>`}</button>` }).join('');
-  const main = S.ed ? '<div class="paper" id="edbox"></div>' : S.pid && !S.asgId ? probShell() : baiHTML(C, B);
+  const side = `<button class="back" data-allch>← Tất cả chương</button><h3>${esc(C.name)}</h3>${isAdminR()?`<button class="mini" data-sfedit="ch" data-ref="${C.id}">✏️ Sửa chương</button>`:''}` + C.bais.map(b => { const its = b.dangs.flatMap(d=>d.items), done = its.filter(x=>stat(S.prog,x[0])).length;
+    return `<button class="dg" data-bai="${b.id}" aria-current="${S.bai===b.id}">${M(esc(b.name))}<small>${its.length} câu${staff?'':' · đã làm '+done}</small>${staff?'':`<div class="meter"><i style="width:${its.length?done/its.length*100:0}%"></i></div>`}</button>` }).join('') + (isAdminR()?`<button class="dg add" data-sfnew="bai" data-ref="${C.id}">+ Thêm bài học</button>`:'');
+  const main = busy() ? '<div class="paper" id="edbox"></div>' : S.pid && !S.asgId ? probShell() : B ? baiHTML(C, B) : `<div class="paper"><h1>${esc(C.name)}</h1><p class="empty">Chương chưa có bài học.</p></div>`;
   $('#app').innerHTML = `<div class="wrap"><aside class="side">${side}</aside><section id="main">${main}</section></div>`;
-  if (S.ed) edDraw(); else if (S.pid && !S.asgId) loadProb(); else loadTheory(B.id);
+  if (busy()) panelDraw(); else if (S.pid && !S.asgId) loadProb(); else if (B) loadTheory(B.id);
 }
 function baiHTML(C, B){
   const staff = isStaff();
@@ -666,12 +684,12 @@ function baiHTML(C, B){
     const chips = list.map((x,k) => { const p = x[0], s = staff ? 0 : stat(S.prog,p), lk = !canSee(p);
       return `<button class="chip ${s?'s'+s:''} ${lk?'lock':''} ${staff&&S.sel.has(p)?'sel':''}" data-pid="${p}" title="${x[3]?LVN[x[3]]:''}">${k+1}</button>` }).join('');
     const meth = th && th.methods && th.methods[d.id];
-    return `<div class="card"><h3>Dạng ${i+1}. ${M(esc(d.name))}</h3>${meth&&meth.length?`<details class="ex"><summary>Phương pháp giải</summary>${paras(meth)}</details>`:''}
+    return `<div class="card"><div class="row sp"><h3>Dạng ${i+1}. ${M(esc(d.name))}</h3>${isAdminR()?`<button class="mini" data-sfedit="tdang" data-ref="${d.id}">✏️ Sửa</button>`:''}</div>${meth&&meth.length?`<details class="ex"><summary>Phương pháp giải</summary>${paras(meth)}</details>`:''}
       <div class="seg" role="group">${['mc','ds','tln'].map(t=>`<button data-ttyp="${t}" aria-pressed="${t===ty}" ${n[t]?'':'disabled'}>${TYPEN[t]} (${n[t]})</button>`).join('')}</div>
-      ${staff?`<div class="row" style="margin-bottom:6px"><button class="btn sm" data-selall="${d.id}" data-styp="${ty}">Chọn tất cả</button><button class="btn sm" data-rand="${d.id}" data-styp="${ty}">Chọn ngẫu nhiên 5 câu</button>${isAdminR()?`<button class="btn sm pri" data-padd="${d.id}" data-ptyp="${ty}">+ Thêm câu ${TYPEN[ty].toLowerCase()}</button>`:''}</div>`:''}
+      ${staff?`<div class="row" style="margin-bottom:6px"><button class="btn sm" data-selall="${d.id}" data-styp="${ty}">Chọn tất cả</button><button class="btn sm" data-rand="${d.id}" data-styp="${ty}">Chọn ngẫu nhiên 5 câu</button>${isAdminR()?`<button class="btn sm pri" data-padd="${d.id}" data-ptyp="${ty}">+ Thêm câu ${TYPEN[ty].toLowerCase()}</button><button class="btn sm" data-impdang="${d.id}">📄 Nhập từ file</button>`:''}</div>`:''}
       <div class="chips">${chips}</div></div>` }).join('');
   const legend = staff ? '' : `<div class="legend"><span class="l1">Đúng</span><span class="l3">Sai</span><span>Chưa làm</span>${isFull()?'':'<span>🔒 Gói Full</span>'}</div>`;
-  return `<div class="paper"><div class="kick">${esc(C.name)}</div><h1>${M(esc(B.name))}</h1>
+  return `<div class="paper"><div class="row sp"><div class="kick">${esc(C.name)}</div>${isAdminR()?`<span class="row" style="gap:6px"><button class="mini" data-sfedit="bai" data-ref="${B.id}">✏️ Sửa bài học</button><button class="mini" data-sfnew="tdang" data-ref="${B.id}">+ Thêm dạng</button></span>`:''}</div><h1>${M(esc(B.name))}</h1>
     <details class="ex" id="thbox"><summary>Tóm tắt lí thuyết</summary><div id="thbody">${th?paras(th.theory):'<p class="hint">Đang tải…</p>'}</div></details>${legend}${dangs}</div>`;
 }
 async function loadTheory(bid){ if (S.tnth[bid]) return; const d = await safe(() => S.B.get('tnth/'+bid)); S.tnth[bid] = d || {theory:[], methods:{}}; if (S.bai === bid && !S.pid && ['khotn','tracnghiem'].includes(curView())) { const open = document.getElementById('thbox') && document.getElementById('thbox').open; renderTN(); if (open) document.getElementById('thbox').open = true } }
@@ -1042,6 +1060,526 @@ function aiCard(){ const c = aiCfg();
    <div class="row" style="margin-top:8px"><input type="text" id="aikey" placeholder="Dán khoá API" value="${esc(c.key||'')}" autocomplete="off" style="flex:1 1 280px"><input type="text" id="aimodel" placeholder="Model (để trống = mặc định)" value="${esc(c.model||'')}" style="flex:0 1 240px"></div>
    <div class="row" style="margin-top:8px"><button class="btn sm pri">Lưu khoá</button>${c.key?'<button type="button" class="btn sm red" data-aidel>Xoá khoá</button>':''}<span class="hint">${c.key?'Đã có khoá.':'Chưa có khoá.'} Khoá Gemini lấy miễn phí tại aistudio.google.com → Get API key.</span></div></form></div>` }
 
+/* ---------------- MathType (MTEF v5) -> LaTeX, chạy trong trình duyệt ---------------- */
+const MT = (() => {
+  const SYM = {0x2212:'-',0x2013:'-',0x00D7:'\\times',0x00F7:'\\div',0x22C5:'\\cdot',0x00B7:'\\cdot',0x2264:'\\le',0x2265:'\\ge',0x2260:'\\ne',0x2248:'\\approx',0x2261:'\\equiv',
+    0x00B1:'\\pm',0x2213:'\\mp',0x221E:'\\infty',0x2208:'\\in',0x2209:'\\notin',0x2282:'\\subset',0x2286:'\\subseteq',0x222A:'\\cup',0x2229:'\\cap',0x2205:'\\varnothing',
+    0x21D2:'\\Rightarrow',0x21D4:'\\Leftrightarrow',0x21D0:'\\Leftarrow',0x2192:'\\to',0x2190:'\\leftarrow',0x2194:'\\leftrightarrow',0x27FA:'\\Leftrightarrow',0x27F9:'\\Rightarrow',
+    0x2200:'\\forall',0x2203:'\\exists',0x2234:'\\therefore',0x2235:'\\because',0x221A:'\\surd',0x2220:'\\angle',0x22A5:'\\perp',0x2225:'\\parallel',0x2016:'\\|',
+    0x25B3:'\\triangle',0x2206:'\\Delta',0x0394:'\\Delta',0x00B0:'^\\circ',0x2218:'\\circ',0x2032:"'",0x2033:"''",0x2026:'\\ldots',0x22EF:'\\cdots',0x22EE:'\\vdots',0x22F1:'\\ddots',
+    0x2329:'\\langle',0x232A:'\\rangle',0x27E8:'\\langle',0x27E9:'\\rangle',0x211D:'\\mathbb{R}',0x2115:'\\mathbb{N}',0x2124:'\\mathbb{Z}',0x211A:'\\mathbb{Q}',
+    0x2223:'|',0x2245:'\\cong',0x223D:'\\backsim',0x223C:'\\sim',0x2295:'\\oplus',0x2297:'\\otimes',0x2227:'\\wedge',0x2228:'\\vee',0x00AC:'\\neg',
+    0x2202:'\\partial',0x2207:'\\nabla',0x2211:'\\sum',0x220F:'\\prod',0x222B:'\\int',0x21A6:'\\mapsto',0x2243:'\\simeq',0x226A:'\\ll',0x226B:'\\gg',0x2283:'\\supset',0x2287:'\\supseteq',
+    0x0025:'\\%',0x0023:'\\#',0x0026:'\\&',0x007B:'\\{',0x007D:'\\}',0x005F:'\\_',0x0024:'\\$',0x005C:'\\backslash',0x007E:'\\sim',0x005E:'\\hat{}',
+    0x00A0:'~',0x2061:'',0x2062:'',0x200B:'',0x02D9:'\\dot{}',0x2019:"'",0x2018:'`',0x226E:'\\not<',0x226F:'\\not>',0x2270:'\\not\\le',0x2271:'\\not\\ge',
+    0x2226:'\\nparallel',0x220A:'\\in',0x2116:'\\text{№}',0x21C4:'\\rightleftarrows',0x21CC:'\\rightleftharpoons',0x2191:'\\uparrow',0x2193:'\\downarrow',
+    0x2014:'\\text{—}',0x2022:'\\bullet',0x25CB:'\\circ',0x2299:'\\odot',0x00BD:'\\tfrac12',0x2221:'\\measuredangle',0x0303:'',0x0302:'',0x25A1:'\\square',0x2A7E:'\\geqslant',0x2A7D:'\\leqslant',0x22A0:'\\boxtimes',0xFFFD:''};
+  const GREEK = {'α':'\\alpha','β':'\\beta','γ':'\\gamma','δ':'\\delta','ε':'\\varepsilon','ϵ':'\\epsilon','ζ':'\\zeta','η':'\\eta','θ':'\\theta','ϑ':'\\vartheta','ι':'\\iota','κ':'\\kappa',
+    'λ':'\\lambda','μ':'\\mu','ν':'\\nu','ξ':'\\xi','π':'\\pi','ϖ':'\\varpi','ρ':'\\rho','σ':'\\sigma','ς':'\\varsigma','τ':'\\tau','υ':'\\upsilon','φ':'\\varphi','ϕ':'\\phi',
+    'χ':'\\chi','ψ':'\\psi','ω':'\\omega','Γ':'\\Gamma','Δ':'\\Delta','Θ':'\\Theta','Λ':'\\Lambda','Ξ':'\\Xi','Π':'\\Pi','Σ':'\\Sigma','Υ':'\\Upsilon','Φ':'\\Phi','Ψ':'\\Psi','Ω':'\\Omega'};
+  const PRIV = {0xEF00:'',0xEF01:'\\,',0xEF02:'\\:',0xEF03:'\\;',0xEF04:'\\ ',0xEF05:'\\quad',0xEF06:'\\qquad',0xEF07:'',0xEF08:'\\!',0xEF09:'',0xEF22:'\\ ',
+    0xEB1A:'\\to',0xEB19:'\\leftarrow',0xEB0C:'\\Rightarrow',0xEC0C:'\\Rightarrow',0xEC0B:'\\Leftarrow',0xE98F:'\\Rightarrow',0xE990:'\\Leftrightarrow',0xEC09:'\\Leftrightarrow',0xEB04:'\\overline{}',
+    0xE900:'\\ldots',0xEC00:'\\cdots',0xE921:'\\ldots',0xEB05:'\\cdots',0xF020:' ',0xF700:'',0xE95B:'\\Rightarrow',0xE95C:'\\Leftarrow'};
+  const REL = new Set(['=','<','>','\\le','\\ge','\\ne','\\approx','\\Leftrightarrow','\\Rightarrow','\\equiv','\\Leftarrow','\\in','\\notin','\\subset','\\cong','\\sim','\\to']);
+  const FUNCS = new Set(['sin','cos','tan','cot','log','ln','lim','max','min','exp','sup','inf','arcsin','arccos','arctan','sinh','cosh','tanh','det','gcd','deg','lg','tg','cotg']);
+  const isL = c => /\p{L}/u.test(c), asc = c => c.charCodeAt(0) < 128;
+  const escT = s => [...s].map(c => '{}'.includes(c) ? '\\' + c : c === '\\' ? '\\backslash ' : '$%#&_'.includes(c) ? '\\' + c : c === '^' ? '\\^{}' : c === '~' ? '\\~{}' : c === ' ' ? ' ' : c).join('');
+  function mapChar(code){ if (code in PRIV) return PRIV[code]; if (code >= 0xE000 && code <= 0xF8FF) return '';
+    const ch = String.fromCodePoint(code); if (GREEK[ch]) return GREEK[ch]; if (code in SYM) return SYM[code];
+    if (ch === ' ') return '\\ '; if (asc(ch)) return ch; if (isL(ch)) return '\\text{' + ch + '}'; return ch }
+  class Rd { constructor(b){ this.b = b; this.i = 0 } u8(){ return this.b[this.i++] } u16(){ const v = this.b[this.i] | (this.b[this.i+1] << 8); this.i += 2; return v }
+    cstr(){ let j = this.i; while (j < this.b.length && this.b[j] !== 0) j++; const v = this.b.slice(this.i, j); this.i = j + 1; return v } eof(){ return this.i >= this.b.length } }
+  const skipDims = (r, n) => { let k = 0, hi = true, cur = 0; while (k < n) { let nib; if (hi) { cur = r.u8(); nib = cur >> 4 } else nib = cur & 0xF; hi = !hi; if (nib === 0xF) k++ } };
+  const nudge = (r, o) => { if (o & 0x08) { const dx = r.u8(), dy = r.u8(); if (dx === 128 && dy === 128) r.i += 4 } };
+  const ruler = r => { const n = r.u8(); r.i += 3 * n };
+  function plist(r){ const out = []; while (!r.eof()) { const t = r.u8(); if (t === 0) return out; const n = prec(r, t); if (n) out.push(n) } return out }
+  function prec(r, tag){
+    if (tag === 1) { const o = r.u8(); nudge(r, o); if (o & 4) r.u16(); if (o & 2) ruler(r); if (o & 1) return {kind:'line', items:[], nul:true}; return {kind:'line', items:plist(r)} }
+    if (tag === 2) { const o = r.u8(); nudge(r, o); const tf = r.u8() - 128; let code = null; if (!(o & 0x20)) code = r.u16(); if (o & 4) r.u8(); if (o & 0x10) r.u16();
+      const emb = []; if (o & 1) for (const e of plist(r)) if (e.kind === 'embell') emb.push(e.t); return {kind:'char', tf, code, emb} }
+    if (tag === 3) { const o = r.u8(); nudge(r, o); const sel = r.u8(); let v = r.u8(); if (v & 0x80) v = (v & 0x7F) | (r.u8() << 7); r.u8(); return {kind:'tmpl', sel, v, items:plist(r)} }
+    if (tag === 4) { const o = r.u8(); nudge(r, o); const ha = r.u8(); r.u8(); if (o & 2) ruler(r); return {kind:'pile', ha, items:plist(r)} }
+    if (tag === 5) { const o = r.u8(); nudge(r, o); r.u8(); const hj = r.u8(); r.u8(); const rows = r.u8(), cols = r.u8(); r.i += Math.floor(((rows+1)*2+7)/8); r.i += Math.floor(((cols+1)*2+7)/8); return {kind:'matrix', rows, cols, hj, items:plist(r)} }
+    if (tag === 6) { const o = r.u8(); nudge(r, o); return {kind:'embell', t:r.u8()} }
+    if (tag === 7) { ruler(r); return null } if (tag === 8) { r.u8(); r.u8(); return null }
+    if (tag === 9) { const b = r.u8(); if (b === 101) r.u16(); else if (b === 100) { r.u8(); r.u16() } else r.u8(); return null }
+    if (tag >= 10 && tag <= 14) return null; if (tag === 15) { r.u8(); return null }
+    if (tag === 16) { const o = r.u8(); r.i += 2 * (o & 1 ? 4 : 3); if (o & 4) r.cstr(); return null }
+    if (tag === 17) { r.u8(); r.cstr(); return null }
+    if (tag === 18) { r.u8(); skipDims(r, r.u8()); skipDims(r, r.u8()); const n = r.u8(); for (let k = 0; k < n; k++) if (r.u8() !== 0) r.u8(); return null }
+    if (tag === 19) { r.cstr(); return null }
+    if (tag >= 100) { let ln = r.u8(); if (ln === 255) ln = r.u16(); r.i += ln; return null }
+    throw new Error('bad tag ' + tag) }
+  function parse(data){ const hdr = data[0] | (data[1] << 8); const r = new Rd(data.subarray(hdr)); if (r.u8() !== 5) throw new Error('MTEF version');
+    r.u8(); r.u8(); r.u8(); r.u8(); r.cstr(); r.u8(); return plist(r) }
+  const join = parts => { let o = ''; for (const p of parts) { if (!p) continue; if (o && /\\[A-Za-z]+$/.test(o) && /^[A-Za-z0-9]/.test(p)) o += ' '; o += p } return o };
+  const EMB = {2:'\\dot',3:'\\ddot',4:'\\dddot',8:'\\tilde',9:'\\hat',11:'\\vec',12:'\\overleftarrow',13:'\\overleftrightarrow',14:'\\overrightharpoon',16:'\\bar',17:'\\overline',19:'\\overset{\\frown}',22:'\\overrightarrow',21:'\\overleftrightarrow'};
+  const FENCE = {0:['\\langle','\\rangle'],1:['(',')'],2:['\\{','\\}'],3:['[',']'],4:['|','|'],5:['\\|','\\|'],6:['\\lfloor','\\rfloor'],7:['\\lceil','\\rceil'],8:['[','['],9:['(',')']};
+  const DL = {40:'(',41:')',91:'[',93:']',123:'\\{',125:'\\}',124:'|',0x2016:'\\|',0x2329:'\\langle',0x232A:'\\rangle',0x27E8:'\\langle',0x27E9:'\\rangle',0x230A:'\\lfloor',0x230B:'\\rfloor',0x2308:'\\lceil',0x2309:'\\rceil',0x2223:'|',0x2225:'\\|',0x3008:'\\langle',0x3009:'\\rangle'};
+  const delim = c => DL[c];
+  const ch = c => c == null ? '' : String.fromCodePoint(c);
+  const textish = it => it.kind === 'char' && it.code != null && (it.tf === 1 || it.tf === 12 || (it.tf !== 24 && isL(ch(it.code)) && !asc(ch(it.code)) && !GREEK[ch(it.code)] && it.code < 0xE000));
+  function items(its){ const fr = []; let i = 0; const n = its.length;
+    while (i < n) { let it = its[i];
+      if (textish(it)) { let s = '';
+        while (i < n && textish(its[i]) && !its[i].emb.length) { const c = its[i].code; if (c >= 0xE000 && c <= 0xF8FF) s += [0xEF04,0xEF05,0xEF01,0xEF02,0xEF03,0xF020].includes(c) ? ' ' : ''; else s += ch(c); i++ }
+        if (s) { fr.push(s.trim() === '' ? '\\ ' : '\\text{' + escT(s) + '}'); continue } it = its[i] }
+      if (it.kind === 'char' && it.tf === 2 && it.code != null && isL(ch(it.code))) { let s = '';
+        while (i < n && its[i].kind === 'char' && its[i].tf === 2 && its[i].code != null && isL(ch(its[i].code)) && asc(ch(its[i].code))) { s += ch(its[i].code); i++ }
+        if (s) { fr.push(FUNCS.has(s) && !['tg','cotg','lg'].includes(s) ? '\\' + s + ' ' : '\\operatorname{' + s + '}'); continue } it = its[i] }
+      if (it.kind === 'char') fr.push(rchar(it));
+      else if (it.kind === 'tmpl') { let f = tmpl(it); if ([27,28,29].includes(it.sel) && !fr.length) f = '{}' + f; fr.push(f) }
+      else if (it.kind === 'pile') fr.push(pile(it)); else if (it.kind === 'matrix') fr.push(matrix(it)); else if (it.kind === 'line') fr.push(line(it));
+      i++ }
+    return fr }
+  function rchar(it){ if (it.code == null) return ''; if (it.tf === 24) return PRIV[it.code] ?? '\\,';
+    let s = mapChar(it.code);
+    if (it.tf === 7 && /^[A-Za-z]$/.test(s)) s = '\\mathbf{' + s + '}'; else if (it.tf === 2 && s.length === 1 && isL(s)) s = '\\mathrm{' + s + '}';
+    for (const e of it.emb) { if (e === 5) s += "'"; else if (e === 6) s += "''"; else if (e === 18) s += "'''"; else if (e === 10) s = '\\not' + (/^[A-Za-z]/.test(s) ? ' ' : '') + s; else if (EMB[e]) s = EMB[e] + '{' + s + '}' }
+    return s }
+  const line = l => l.kind === 'pile' ? pile(l) : l.kind === 'matrix' ? matrix(l) : l.nul ? '' : join(items(l.items));
+  const slots = t => t.items.filter(x => ['line','pile','matrix'].includes(x.kind));
+  const g = s => '{' + s + '}';
+  function tmpl(t){ const {sel, v} = t, sl = slots(t), chs = t.items.filter(x => x.kind === 'char'), S = sl.map(line), s0 = S[0] || '';
+    if (sel <= 9) { let [L, R] = FENCE[sel] || ['(', ')']; if (chs.length >= 1 && delim(chs[0].code)) L = delim(chs[0].code); if (chs.length >= 2 && delim(chs[1].code)) R = delim(chs[1].code);
+      let hL, hR; if (sel <= 8) { hL = v & 1; hR = v & 2; if (sel <= 7 && (v & 3) === 0) hL = hR = 1 } else hL = hR = 1;
+      if (chs.length === 1 && sel <= 8) { if (hL && !hR) L = delim(chs[0].code) || L; if (hR && !hL) R = delim(chs[0].code) || R }
+      const left = '\\left' + (hL ? L : '.'), right = '\\right' + (hR ? R : '.');
+      if (left.endsWith('\\{') && right === '\\right.' && sl[0] && sl[0].kind === 'line' && sl[0].items.length === 1 && sl[0].items[0].kind === 'pile')
+        return '\\begin{cases}' + rows(sl[0].items[0]) + '\\end{cases}';
+      const sp = x => /[A-Za-z]$/.test(x) ? x + ' ' : x; return sp(left) + s0 + sp(right) }
+    if (sel === 10) return (v & 1) && S[1] ? '\\sqrt[' + S[1] + ']' + g(s0) : '\\sqrt' + g(s0);
+    if (sel === 11) return (v & 4) ? g(S[0]||'') + '/' + g(S[1]||'') : '\\frac' + g(S[0]||'') + g(S[1]||'');
+    if (sel === 12) return '\\underline' + g(s0); if (sel === 13) return '\\overline' + g(s0);
+    if (sel === 14) { const top = S[0]||'', bot = S[1]||''; const cmd = (v & 1) && !(v & 2) ? '\\xleftarrow' : (v & 3) === 3 ? '\\xleftrightarrow' : '\\xrightarrow'; return cmd + (bot ? '[' + bot + ']' : '') + g(top) }
+    if (sel >= 15 && sel <= 23) { const main = S[0]||'', low = S[1]||'', up = S[2]||'';
+      let op = {15:'\\int',16:'\\sum',17:'\\prod',18:'\\coprod',19:'\\bigcup',20:'\\bigcap',21:'\\int',22:'\\sum',23:''}[sel];
+      if (chs.length) op = {0x222B:'\\int',0x222C:'\\iint',0x222D:'\\iiint',0x222E:'\\oint',0x2211:'\\sum',0x220F:'\\prod',0x2210:'\\coprod',0x22C3:'\\bigcup',0x22C2:'\\bigcap'}[chs[0].code] || op;
+      if (sel === 23) return '\\mathop{' + main + '}\\limits' + (low ? '_' + g(low) : '') + (up ? '^' + g(up) : '');
+      if (sel === 21 || sel === 22) return op + (S[0] ? '_' + g(S[0]) : '') + (S[1] ? '^' + g(S[1]) : '');
+      return op + (low ? '_' + g(low) : '') + (up ? '^' + g(up) : '') + ' ' + main }
+    if (sel === 24 || sel === 25) { const lab = S[1]||''; return (v & 1) ? '\\overbrace' + g(s0) + (lab ? '^' + g(lab) : '') : '\\underbrace' + g(s0) + (lab ? '_' + g(lab) : '') }
+    if (sel === 26) return s0 + '\\,\\big)\\,' + (S[1]||'');
+    if (sel >= 27 && sel <= 29) { const sub = S[0]||'', sup = S[1]||''; return (sub ? '_' + g(sub) : '') + (sup ? '^' + g(sup) : '') }
+    if (sel === 30) return '\\left\\langle ' + s0 + '\\middle| ' + (S[1]||'') + '\\right\\rangle ';
+    if (sel === 31) return ((v & 1) && (v & 2) ? '\\overleftrightarrow' : (v & 1) ? '\\overleftarrow' : '\\overrightarrow') + g(s0);
+    if (sel === 32) return '\\widetilde' + g(s0); if (sel === 33) return '\\widehat' + g(s0); if (sel === 34) return '\\overset{\\frown}' + g(s0);
+    if (sel === 36) return '\\cancel' + g(s0); if (sel === 37) return '\\boxed' + g(s0);
+    return S.join(' ') }
+  function alignLine(l){ if (l.kind !== 'line' || l.nul) return line(l); const fr = items(l.items);
+    for (let k = 0; k < fr.length; k++) if (REL.has(fr[k].trim())) return join(fr.slice(0, k)) + ' &' + join(fr.slice(k)); return '&' + join(fr) }
+  const rows = p => slots(p).map(line).join(' \\\\ ');
+  function pile(p){ const L = slots(p); if (p.ha === 4 && L.length > 1) return '\\begin{aligned}' + L.map(alignLine).join(' \\\\ ') + '\\end{aligned}';
+    if (L.length === 1) return line(L[0]); return '\\begin{array}{' + ({1:'l',2:'c',3:'r'}[p.ha] || 'l') + '}' + rows(p) + '\\end{array}' }
+  function matrix(m){ const c = slots(m).map(line), R = []; for (let r = 0; r < m.rows; r++) R.push(c.slice(r*m.cols, (r+1)*m.cols).join(' & '));
+    return '\\begin{array}{' + ({0:'l',1:'c',2:'r'}[m.hj] || 'c').repeat(m.cols) + '}' + R.join(' \\\\ ') + '\\end{array}' }
+  function toLatex(data){ const fr = []; for (const it of parse(data)) { if (it.kind === 'line') fr.push(line(it)); else if (it.kind === 'pile') fr.push(pile(it)); else if (['tmpl','char','matrix'].includes(it.kind)) fr.push(...items([it])) }
+    let s = join(fr).replace(/\^\{''\}/g, "''").replace(/\^\{'\}/g, "'");
+    s = s.replace(/\\text\{[\s\\backslash n]*\}$/, '').replace(/\\text\{[^{}]*\\backslash[^{}]*\}/g, '').replace(/\\text\{\\backslash.*$/, '')
+      .replace(/(\\[ ,;:!]|\\quad|\\qquad|\s)+$/, '').replace(/^(\\[ ,;:!]|\\quad|\\qquad|\s)+/, '').replace(/\\text\{\s*\}/g, '');
+    return s.trim() }
+  function texInput(data){ const key = 'TeX Input Language'; const k = [...key].map(c => c.charCodeAt(0));
+    outer: for (let i = 0; i + k.length < data.length; i++) { for (let j = 0; j < k.length; j++) if (data[i+j] !== k[j]) continue outer;
+      let a = i + k.length + 1, b = a; while (b < data.length && data[b] !== 0) b++; return new TextDecoder().decode(data.subarray(a, b)) } return null }
+  function splitRef(s){ const P = []; let d = 0, cur = '', i = 0;
+    while (i < s.length) { const c = s[i]; if (c === '\\' && i + 1 < s.length) { cur += s.slice(i, i+2); i += 2; continue }
+      if (c === '{') d++; else if (c === '}') d--;
+      if (d === 0 && (s.slice(i, i+2) === '  ' || c === '\r')) { P.push(cur); cur = ''; while (i < s.length && ' \r'.includes(s[i])) i++; continue }
+      cur += c; i++ }
+    P.push(cur); return P.map(x => x.trim()).filter(Boolean) }
+  const norm = x => x.replace(/\\prime/g, "'").replace(/\^'/g, "'").replace(/\\(left|right|text|mathrm|operatorname)/g, '').replace(/[\s{}]/g, '');
+  const VNP = [['d?ng quy','đồng quy'],['d?ng v?','đồng vị'],['ð?ng quy','đồng quy'],['Ð?ng quy','đồng quy'],['d?nh l','định l'],['d?nn l','định l'],['ð?nh l','định l'],['Ð?nh l','Định l'],['d?i d?nh','đối đỉnh'],
+    ['h?nh ch? nh?t','hình chữ nhật'],['ch? nh?t','chữ nhật'],['k? b','kề b'],['ph? v?i','phụ với'],['tri?u d?ng','triệu đồng'],['t? gi','tứ gi'],['T? gi','Tứ gi'],['U?(','Ư('],['U? (','Ư ('],
+    ['ti?p tuy?n','tiếp tuyến'],['du?ng tr','đường tr'],['du?ng k','đường k'],['n?i ti?p','nội tiếp'],['trung di?m','trung điểm'],['Ch?ng minh','Chứng minh'],['c?p g','cặp g'],['d?u','đều']];
+  const VNW = {'t?i':'tại','ho?c':'hoặc','c?a':'của','di?m':'điểm','K?':'Kẻ','t?ng':'tổng','nghi?m':'nghiệm','bi?t':'biệt','T?':'Từ','m?t':'một','v?i':'với','V?i':'Với','h?nh':'hình','th?ng':'thẳng','V?y':'Vậy',
+    'du?ng':'đường','tuy?n':'tuyến','ti?p':'tiếp','t?n':'tấn','G?i':'Gọi','c?t':'cắt','n?m':'nằm','l?i':'lại','L?i':'Lời','n?i':'nội','d?nh':'định','d?i':'đối','v?':'vị','ch?t':'chất','Ch?ng':'Chứng','c?p':'cặp','ph?':'phụ','k?':'kề','thu?c':'thuộc','nh?t':'nhật'};
+  function fixVn(s){ if (!/[?ðÐ]/.test(s)) return s; for (const [a, b] of VNP) s = s.split(a).join(b);
+    return s.replace(/[A-Za-zÀ-ỹ]*\?[A-Za-zÀ-ỹ]*/g, t => VNW[t] || t).replace(/ð/g, 'đ').replace(/Ð/g, 'Đ') }
+  function best(data){ let tex = toLatex(data); const ref = texInput(data);
+    if (ref && !tex.includes('begin{') && !ref.includes('begin{')) { const P = splitRef(ref); if (P.length > 1 && norm(P.join('')) === norm(tex)) tex = '\\begin{aligned}' + P.map(p => '&' + p).join(' \\\\ ') + '\\end{aligned}' }
+    return fixVn(tex) }
+  return {best};
+})();
+
+/* ---------------- đọc file Word / LaTeX / PDF thành bài ---------------- */
+const LIBS = {jszip:'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js', cfb:'https://cdn.jsdelivr.net/npm/cfb@1.2.2/dist/cfb.min.js',
+  wmf:'https://cdn.jsdelivr.net/npm/rtf.js@3.0.9/dist/WMFJS.bundle.min.js', emf:'https://cdn.jsdelivr.net/npm/rtf.js@3.0.9/dist/EMFJS.bundle.min.js'};
+const libP = {};
+const needLib = k => libP[k] = libP[k] || new Promise((ok, no) => { const s = document.createElement('script'); s.src = LIBS[k]; s.onload = ok; s.onerror = () => { delete libP[k]; no(new Error('không tải được thư viện đọc file (kiểm tra mạng)')) }; document.head.appendChild(s) });
+const WNS = {w:'http://schemas.openxmlformats.org/wordprocessingml/2006/main', m:'http://schemas.openxmlformats.org/officeDocument/2006/math',
+  r:'http://schemas.openxmlformats.org/officeDocument/2006/relationships', v:'urn:schemas-microsoft-com:vml', o:'urn:schemas-microsoft-com:office:office',
+  a:'http://schemas.openxmlformats.org/drawingml/2006/main', wp:'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing'};
+const isT = (el, p, n) => el && el.nodeType === 1 && el.namespaceURI === WNS[p] && el.localName === n;
+const kids = (el, p, n) => [...(el ? el.children : [])].filter(c => !p || isT(c, p, n));
+const kid = (el, p, n) => kids(el, p, n)[0] || null;
+const desc = (el, p, n) => el ? [...el.getElementsByTagNameNS(WNS[p], n)] : [];
+const wv = (el, p = 'w', a = 'val') => el ? el.getAttributeNS(WNS[p], a) : null;
+
+// ---- OMML (công thức Word) -> LaTeX
+const OCH = {'−':'-','×':'\\times','÷':'\\div','⋅':'\\cdot','·':'\\cdot','≤':'\\le','≥':'\\ge','≠':'\\ne','≈':'\\approx','±':'\\pm','∞':'\\infty','∈':'\\in','∉':'\\notin','⊂':'\\subset','∪':'\\cup','∩':'\\cap',
+  '∅':'\\varnothing','⇒':'\\Rightarrow','⇔':'\\Leftrightarrow','→':'\\to','∀':'\\forall','∃':'\\exists','∠':'\\angle','⊥':'\\perp','∥':'\\parallel','△':'\\triangle','Δ':'\\Delta','°':'^\\circ',
+  'α':'\\alpha','β':'\\beta','γ':'\\gamma','δ':'\\delta','ε':'\\varepsilon','θ':'\\theta','λ':'\\lambda','μ':'\\mu','π':'\\pi','ρ':'\\rho','σ':'\\sigma','φ':'\\varphi','ω':'\\omega','Ω':'\\Omega',
+  'ℝ':'\\mathbb{R}','ℕ':'\\mathbb{N}','ℤ':'\\mathbb{Z}','ℚ':'\\mathbb{Q}','…':'\\ldots','⋯':'\\cdots','≡':'\\equiv','∽':'\\backsim','∼':'\\sim','≅':'\\cong','%':'\\%','{':'\\{','}':'\\}'};
+function omml(el){
+  const g = x => '{' + x + '}', e = n => omml(kid(el, 'm', n));
+  if (!el) return '';
+  if (isT(el, 'm', 'r')) { const t = desc(el, 'm', 't').map(x => x.textContent).join(''); const nor = desc(el, 'm', 'nor').length;
+    if (nor || /[\p{L}]{2,}/u.test(t) && /[À-ỹđĐ]/.test(t)) return '\\text{' + t + '}';
+    return [...t].map(c => OCH[c] ? OCH[c] + (/^\\[a-z]+$/i.test(OCH[c]) ? ' ' : '') : c).join('') }
+  const pr = (n, k) => wv(desc(el, 'm', n)[0], 'm') ;
+  switch (el.namespaceURI === WNS.m ? el.localName : '') {
+    case 'f': return (pr('type') === 'lin' ? g(e('num')) + '/' + g(e('den')) : '\\frac' + g(e('num')) + g(e('den')));
+    case 'sSup': return g(e('e')) + '^' + g(e('sup'));
+    case 'sSub': return g(e('e')) + '_' + g(e('sub'));
+    case 'sSubSup': return g(e('e')) + '_' + g(e('sub')) + '^' + g(e('sup'));
+    case 'sPre': return '{}_' + g(e('sub')) + '^' + g(e('sup')) + e('e');
+    case 'rad': { const d = e('deg'); return '\\sqrt' + (d ? '[' + d + ']' : '') + g(e('e')) }
+    case 'd': { const dp = kid(el, 'm', 'dPr'); const b = dp && kid(dp, 'm', 'begChr'), en = dp && kid(dp, 'm', 'endChr'), sp = dp && kid(dp, 'm', 'sepChr');
+      const fix = c => c === '' ? '.' : c === '{' ? '\\{' : c === '}' ? '\\}' : c === '〈' || c === '⟨' ? '\\langle' : c === '〉' || c === '⟩' ? '\\rangle' : c === '‖' ? '\\|' : c;
+      const L = fix(b ? wv(b, 'm') ?? '' : '('), R = fix(en ? wv(en, 'm') ?? '' : ')');
+      const body = kids(el, 'm', 'e').map(omml).join(sp ? (wv(sp, 'm') || '|') : ',');
+      const ea = kids(el, 'm', 'e'); if (L === '\\{' && R === '.' && ea.length === 1 && kid(ea[0], 'm', 'eqArr')) return '\\begin{cases}' + kids(kid(ea[0], 'm', 'eqArr'), 'm', 'e').map(omml).join(' \\\\ ') + '\\end{cases}';
+      return '\\left' + L + body + '\\right' + R }
+    case 'nary': { const c = pr('chr') || '∫'; const op = {'∑':'\\sum','∏':'\\prod','∫':'\\int','∬':'\\iint','∮':'\\oint','⋃':'\\bigcup','⋂':'\\bigcap'}[c] || c;
+      const lo = e('sub'), up = e('sup'); return op + (lo ? '_' + g(lo) : '') + (up ? '^' + g(up) : '') + ' ' + e('e') }
+    case 'func': { const n = e('fName').replace(/\\text\{(\w+)\}/, '$1'); return (/^(sin|cos|tan|cot|log|ln|lim|max|min|exp)$/.test(n) ? '\\' + n + ' ' : n) + e('e') }
+    case 'limLow': return e('e') + '_' + g(e('lim')); case 'limUpp': return e('e') + '^' + g(e('lim'));
+    case 'acc': { const c = pr('chr') || '̂'; return ({'̂':'\\hat','̅':'\\overline','¯':'\\overline','⃗':'\\vec','→':'\\overrightarrow','̇':'\\dot','̃':'\\tilde','⌒':'\\overset{\\frown}'}[c] || '\\hat') + g(e('e')) }
+    case 'bar': return (pr('pos') === 'bot' ? '\\underline' : '\\overline') + g(e('e'));
+    case 'groupChr': return (pr('pos') === 'top' ? '\\overbrace' : '\\underbrace') + g(e('e'));
+    case 'eqArr': return '\\begin{aligned}' + kids(el, 'm', 'e').map(x => { const s = omml(x); return s.includes('&') ? s : '&' + s }).join(' \\\\ ') + '\\end{aligned}';
+    case 'm': return '\\begin{matrix}' + kids(el, 'm', 'mr').map(r => kids(r, 'm', 'e').map(omml).join(' & ')).join(' \\\\ ') + '\\end{matrix}';
+    case 'box': case 'borderBox': case 'phant': return e('e');
+  }
+  return kids(el).filter(c => !/Pr$/.test(c.localName)).map(omml).join('') }
+
+// ---- ảnh: PNG/JPG thu nhỏ; WMF/EMF vẽ lại bằng thư viện
+function blobImg(blob){ return new Promise((ok, no) => { const u = URL.createObjectURL(blob), im = new Image(); im.onload = () => { ok(im); URL.revokeObjectURL(u) }; im.onerror = () => { URL.revokeObjectURL(u); no(new Error('ảnh lỗi')) }; im.src = u }) }
+async function metaToImg(bytes, ext, wpx, hpx){
+  await needLib(ext); const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength); let svg;
+  if (ext === 'wmf') { let w = 1000, h = 1000; if (dv.getUint32(0, true) === 0x9AC6CDD7) { w = dv.getInt16(10, true) - dv.getInt16(6, true); h = dv.getInt16(12, true) - dv.getInt16(8, true) }
+    svg = new WMFJS.Renderer(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)).render({width: (wpx||w) + 'px', height: (hpx||h) + 'px', xExt: w, yExt: h, mapMode: 8}) }
+  else { const w = dv.getInt32(16, true) - dv.getInt32(8, true), h = dv.getInt32(20, true) - dv.getInt32(12, true);
+    svg = new EMFJS.Renderer(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)).render({width: (wpx||w) + 'px', height: (hpx||h) + 'px', wExt: w, hExt: h, xExt: w, yExt: h, mapMode: 8}) }
+  svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  return blobImg(new Blob([new XMLSerializer().serializeToString(svg)], {type:'image/svg+xml'})) }
+function rasterize(im, wpx){ const W = Math.min(1000, Math.max(60, Math.round((wpx || im.naturalWidth || 400) * 2))); const k = W / (im.naturalWidth || W);
+  const c = document.createElement('canvas'); c.width = W; c.height = Math.max(1, Math.round((im.naturalHeight || W) * k)); const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height);
+  return c.toDataURL('image/webp', 0.85) }
+
+async function readDocx(file, prog){
+  await needLib('jszip'); await needLib('cfb');
+  const z = await JSZip.loadAsync(await file.arrayBuffer()); const P = new DOMParser();
+  const xml = async n => z.file(n) ? P.parseFromString(await z.file(n).async('text'), 'application/xml') : null;
+  const doc = await xml('word/document.xml'); if (!doc) throw new Error('không phải file Word .docx');
+  const rels = {}; const rx = await xml('word/_rels/document.xml.rels'); if (rx) [...rx.documentElement.children].forEach(r => rels[r.getAttribute('Id')] = r.getAttribute('Target'));
+  const path = t => 'word/' + t.replace(/^\/?word\//, '').replace(/^\//, '');
+  // đánh số tự động (Câu %1.)
+  const nums = {}; const nx = await xml('word/numbering.xml');
+  if (nx) { const abs = {}; desc(nx, 'w', 'abstractNum').forEach(a => { const lv = {}; kids(a, 'w', 'lvl').forEach(l => { lv[+wv(l, 'w', 'ilvl')] = {fmt: wv(kid(l, 'w', 'numFmt')) || 'decimal', txt: wv(kid(l, 'w', 'lvlText')) || '', start: +(wv(kid(l, 'w', 'start')) || 1)} }); abs[wv(a, 'w', 'abstractNumId')] = lv });
+    desc(nx, 'w', 'num').forEach(n => nums[wv(n, 'w', 'numId')] = abs[wv(kid(n, 'w', 'abstractNumId'))] || {}) }
+  const cnt = {}; const fmtN = (n, f) => f === 'upperLetter' ? String.fromCharCode(64 + ((n-1)%26+1)) : f === 'lowerLetter' ? String.fromCharCode(96 + ((n-1)%26+1)) : f === 'upperRoman' ? ['I','II','III','IV','V','VI','VII','VIII','IX','X'][n-1] || n : String(n);
+  const eqCache = {}, imgCache = {}; let neq = 0, nimg = 0, bad = 0;
+  async function eq(rid){ const t = rels[rid]; if (!t) return null; if (t in eqCache) return eqCache[t];
+    let tex = null; try { const b = await z.file(path(t)).async('uint8array'); const c = CFB.read(b, {type:'array'}); const e = CFB.find(c, 'Equation Native'); if (e) tex = MT.best(Uint8Array.from(e.content)) } catch(x) { bad++ }
+    neq++; if (prog && neq % 50 === 0) prog(`Đã đọc ${neq} công thức…`); return eqCache[t] = tex }
+  async function img(rid, wpx, hpx){ const t = rels[rid]; if (!t || /^https?:/.test(t)) return null; const k = t + '|' + wpx; if (k in imgCache) return imgCache[k];
+    const f = z.file(path(t)); if (!f) return null; const ext = t.split('.').pop().toLowerCase(); let url = null;
+    try { if (ext === 'wmf' || ext === 'emf') url = rasterize(await metaToImg(await f.async('uint8array'), ext, wpx, hpx), wpx);
+      else if (/^(png|jpe?g|gif|bmp|webp)$/.test(ext)) url = rasterize(await blobImg(await f.async('blob')), wpx) } catch(x) { console.warn('ảnh', t, x); url = null }
+    nimg++; return imgCache[k] = url }
+  const ptPx = s => { const m = /([\d.]+)(pt|in|px)?/.exec(s || ''); if (!m) return 0; const v = +m[1]; return m[2] === 'in' ? v * 96 : m[2] === 'px' ? v : v * 4 / 3 };
+  const shapeSize = el => { const sh = desc(el, 'v', 'shape')[0]; const st = sh ? sh.getAttribute('style') || '' : ''; return [ptPx((/width:([^;]+)/.exec(st)||[])[1]), ptPx((/height:([^;]+)/.exec(st)||[])[1])] };
+  async function segs(p){ const out = [];
+    async function walk(n){ for (const c of n.children) {
+      if (isT(c, 'w', 't')) { const rpr = kid(c.parentNode, 'w', 'rPr'); const b = rpr && kid(rpr, 'w', 'b'); out.push({t:'t', s:c.textContent, b: !!b && !['0','false'].includes(wv(b))}) }
+      else if (isT(c, 'w', 'tab')) { if (isT(c.parentNode, 'w', 'r')) out.push({t:'t', s:' '}) }
+      else if (isT(c, 'w', 'br')) out.push({t:'br'})
+      else if (isT(c, 'm', 'oMath')) out.push({t:'m', tex: omml(c).trim()})
+      else if (isT(c, 'm', 'oMathPara')) { for (const m of desc(c, 'm', 'oMath')) out.push({t:'m', tex: omml(m).trim(), disp:1}) }
+      else if (isT(c, 'w', 'object')) { const ole = desc(c, 'o', 'OLEObject')[0], prog = ole ? ole.getAttribute('ProgID') || '' : '';
+        if (/^Equation/.test(prog)) { const tex = await eq(wv(ole, 'r', 'id')); out.push(tex != null ? {t:'m', tex} : {t:'t', s:'[công thức lỗi]'}) }
+        else { const im = desc(c, 'v', 'imagedata')[0]; if (im) { const [w, h] = shapeSize(c); const u = await img(wv(im, 'r', 'id'), w, h); if (u) out.push({t:'img', u}) } } }
+      else if (isT(c, 'w', 'drawing')) { const bl = desc(c, 'a', 'blip')[0], ex = desc(c, 'wp', 'extent')[0];
+        if (bl) { const w = ex ? +ex.getAttribute('cx') / 9525 : 0, h = ex ? +ex.getAttribute('cy') / 9525 : 0; const u = await img(wv(bl, 'r', 'embed'), w, h); if (u) out.push({t:'img', u}) } }
+      else if (isT(c, 'w', 'pict')) { const im = desc(c, 'v', 'imagedata')[0]; if (im) { const [w, h] = shapeSize(c); const u = await img(wv(im, 'r', 'id'), w, h); if (u) out.push({t:'img', u}) } }
+      else if (c.localName === 'Fallback') continue
+      else if (c.localName === 'AlternateContent') { const ch = [...c.children].find(x => x.localName === 'Choice'); if (ch) await walk(ch) }
+      else if (!isT(c, 'w', 'rPr') && !isT(c, 'w', 'pPr') && !isT(c, 'w', 'instrText')) await walk(c) } }
+    await walk(p); return out }
+  const blocks = [];
+  async function body(el){ for (const c of el.children) {
+    if (isT(c, 'w', 'p')) { const s = await segs(c); const npr = desc(kid(c, 'w', 'pPr'), 'w', 'numPr')[0];
+      if (npr) { const nid = wv(kid(npr, 'w', 'numId')), il = +(wv(kid(npr, 'w', 'ilvl')) || 0), lv = nums[nid] || {};
+        if (lv[il] && !['bullet','none'].includes(lv[il].fmt) && lv[il].txt) { const cc = cnt[nid] = cnt[nid] || {}; cc[il] = (cc[il] ?? lv[il].start - 1) + 1; Object.keys(cc).forEach(k => { if (+k > il) delete cc[k] });
+          const lab = lv[il].txt.replace(/%(\d)/g, (_, k) => fmtN(cc[k-1] ?? (lv[k-1] || {}).start ?? 1, (lv[k-1] || {}).fmt)); s.unshift({t:'t', s: lab + ' '}) } }
+      blocks.push({t:'p', s}) }
+    else if (isT(c, 'w', 'tbl')) { const rows = []; for (const tr of kids(c, 'w', 'tr')) { const cells = []; for (const tc of kids(tr, 'w', 'tc')) { const ps = []; for (const p of desc(tc, 'w', 'p')) ps.push(await segs(p)); cells.push(ps) } rows.push(cells) } blocks.push({t:'tbl', rows}) }
+    else if (isT(c, 'w', 'sdt')) { const sc = kid(c, 'w', 'sdtContent'); if (sc) await body(sc) } } }
+  await body(kid(doc.documentElement, 'w', 'body'));
+  return {blocks, neq, nimg, bad} }
+
+// khối -> dòng chữ kiểu ô soạn ($...$, **đậm**, [ảnh n])
+function blocksToLines(blocks, E){
+  const segTxt = ss => { let o = '', bold = false; const close = () => { if (bold) { o = o.replace(/(\s*)$/, '**$1'); bold = false } };
+    for (const s of ss) {
+      if (s.t === 't') { if (s.b && s.s.trim() && !bold) { o += o && !/\s$/.test(o) ? '' : ''; o += '**'; bold = true } else if (!s.b && bold && s.s.trim()) close(); o += s.s }
+      else { close(); if (s.t === 'm') o += s.tex ? (s.disp ? '\n$$' + s.tex + '$$\n' : '$' + s.tex + '$') : ''; else if (s.t === 'br') o += '\n'; else if (s.t === 'img') { const n = ++E.ni; E.imgs[n] = s.u; o += `[ảnh ${n}]` } } }
+    close(); return o.replace(/\*\*(\s*)\*\*/g, '$1').replace(/\*\*\*\*/g, '') };
+  const L = [];
+  for (const b of blocks) {
+    if (b.t === 'p') segTxt(b.s).split('\n').forEach(x => L.push(x.replace(/ /g, ' ').trim()));
+    else { const cells = b.rows.map(r => r.map(c => c.map(segTxt).join(' ').replace(/\n/g, ' ').trim()));
+      const flat = cells.flat(); const opts = flat.filter(x => /^\**[A-D]\s*[.)]/.test(x)).length;
+      if (opts >= 2 || b.rows.length === 1 && flat.length <= 4) cells.forEach(r => L.push(r.join('   ')));   // bảng chỉ để xếp phương án / hình
+      else cells.forEach(r => L.push('| ' + r.map(x => x.replace(/\|/g, '/')).join(' | ') + ' |')) } }
+  return L.map(x => x.trim()) }
+
+function texToLines(src){
+  let s = src.replace(/\r/g, ''); const b = s.indexOf('\\begin{document}'); if (b >= 0) s = s.slice(b + 16); s = s.replace(/\\end\{document\}[\s\S]*/, '');
+  s = s.replace(/(^|[^\\])%.*$/gm, '$1').replace(/\\(section|subsection)\*?\{([^}]*)\}/g, '\n$2\n').replace(/\\textbf\{([^}]*)\}/g, '**$1**').replace(/\\(item)\b/g, '\n')
+    .replace(/\\begin\{(enumerate|itemize|center|flushleft)\}|\\end\{(enumerate|itemize|center|flushleft)\}/g, '').replace(/\\\\\s*$/gm, '').replace(/\\(noindent|newline|medskip|bigskip|smallskip|par)\b/g, '\n');
+  return s.split('\n').map(x => x.trim()) }
+
+// ---- tách thành dạng / bài (lời giải, phương án, đáp án)
+const RX_DANG = /^\**\s*(DẠNG|Dạng|dạng)\s*([0-9]+|[IVX]+)\s*\**\s*[.:\-–]?\s*\**\s*(.*)$/;
+const RX_PROB = /^\**\s*(Bài|BÀI|Câu|CÂU|Ví dụ|VÍ DỤ|VD)\s*(\d+)\s*[a-z]?\s*\**\s*[.:)]?\s*\**\s*/;
+const RX_SOL = /^\**\s*(Lời giải|LỜI GIẢI|Giải|GIẢI|Hướng dẫn giải|HƯỚNG DẪN GIẢI|Hướng dẫn|HƯỚNG DẪN|HD|Đáp án và lời giải|ĐÁP ÁN VÀ LỜI GIẢI|ĐÁP ÁN|Đáp án)\s*\**\s*[.:]?\s*\**\s*/;
+function splitProblems(lines){
+  const dangs = [], theory = [], reg = {}; let D = null, P = null, mode = 'st', part = '', hint = '', solSection = false;
+  const getD = (name, key) => { const nk = name.toLowerCase().replace(/\s+/g, ' '); let d = dangs.find(x => x.nk === nk); if (!d) { d = {name, nk, key, items: [], meth: []}; dangs.push(d) } return d };
+  for (let raw of lines) { const x = raw.trim(); if (!x) continue; const plain = x.replace(/\*\*/g, '').trim(); let m;
+    if (/^(PHẦN|Phần)\s+([IVX]+|\d+)\b/.test(plain) && plain.length < 160) { part = plain; P = null; D = null; solSection = /LỜI GIẢI|HƯỚNG DẪN/i.test(plain);
+      hint = /ĐÚNG\s*[-–/]?\s*SAI/i.test(plain) ? 'ds' : /TRẢ LỜI NGẮN/i.test(plain) ? 'tln' : /CHỌN|NHIỀU PHƯƠNG ÁN|LỰA CHỌN|1 ĐÁP ÁN/i.test(plain) ? 'mc' : /TỰ LUẬN/i.test(plain) ? 'tl' : hint;
+      mode = /LÍ THUYẾT|LÝ THUYẾT/i.test(plain) ? 'theory' : 'skip'; continue }
+    if ((m = RX_DANG.exec(x)) && x.length < 220) { D = getD(m[3].replace(/\*\*/g, '').replace(/[.:]\s*$/, '').trim() || ('Dạng ' + m[2]), m[2]); P = null; mode = 'meth'; continue }
+    if (/^(LỜI GIẢI|HƯỚNG DẪN GIẢI|ĐÁP ÁN VÀ LỜI GIẢI|ĐÁP ÁN|HƯỚNG DẪN|BẢNG ĐÁP ÁN)\s*[.:]?\s*$/.test(plain)) { solSection = true; P = null; mode = 'skip'; continue }
+    if (/^\*?\s*Mức\s+(độ\s+)?(nhận biết|thông hiểu|vận dụng)/i.test(plain) || /^[IVX]+\.\s*Các dạng/i.test(plain)) continue;
+    if ((m = RX_PROB.exec(x))) { const no = +m[2]; let rest = x.slice(m[0].length).trim();
+      if (/^(BÀI|Bài)/.test(m[1]) && rest.length > 6 && rest === rest.toUpperCase() && /\p{Lu}{3}/u.test(rest)) continue; let lv = null; const lm = /^\**\s*<\s*(NB|TH|VDC|VD)\s*>\s*\**\s*/i.exec(rest); if (lm) { lv = lm[1].toUpperCase(); rest = rest.slice(lm[0].length) }
+      if (!D) D = getD(hint === 'ds' ? 'Câu đúng/sai' : hint === 'tln' ? 'Câu trả lời ngắn' : '', '');
+      const key = part + '|' + D.nk + '|' + no, old = reg[key];
+      if (old) { if (old.solved) { P = null; mode = 'skip' } else { P = old; mode = 'so2'; P.so2 = [] } continue }
+      P = {no, st: [], so: [], so2: [], lv, hint, solved: false}; D.items.push(P); reg[key] = P; mode = 'st'; if (rest) P.st.push(rest); continue }
+    if (P && (m = RX_SOL.exec(x)) && !/^Giải (phương|hệ|bất|bài|các)/i.test(plain)) { mode = 'so'; P.solved = true; P.so = []; const rest = x.slice(m[0].length).trim(); if (rest) P.so.push(rest); continue }
+    if (mode === 'theory') { theory.push(x); continue }
+    if (mode === 'meth' && D) { if (!/^[IVX]+\.\s*Phương pháp/i.test(plain)) D.meth.push(x); continue }
+    if (!P || mode === 'skip') continue;
+    if (mode === 'st') P.st.push(x); else if (mode === 'so') P.so.push(x); else if (mode === 'so2') P.so2.push(x) }
+  for (const d of dangs) for (const p of d.items) if (!p.so.length && p.so2.length) { const st = new Set(p.st); p.so = p.so2.filter(l => !st.has(l)) }
+  dangs.forEach(d => d.items = d.items.filter(p => p.st.length || p.so.length));
+  return {dangs: dangs.filter(d => d.items.length), theory} }
+// nhận dạng loại câu
+const notL = '(?![\\p{L}])';
+function dsKeys(txt){ const seg = (/(Đáp án|ĐÁP ÁN)\s*:?(.{0,120})/u.exec(txt) || [0, 0, txt])[2]; const k = ['','','',''];
+  'abcd'.split('').forEach((c, i) => { const m = new RegExp('(?:^|[^\\p{L}])' + c + '\\s*\\)?\\s*[-–:]?\\s*(Đúng|Sai|Đ|S)' + notL, 'u').exec(seg); if (m) k[i] = m[1][0] === 'Đ' ? 'Đ' : 'S' }); return k }
+function shapeItem(P, want){
+  const it = {y:'tl', f:{st: P.st.join('\n'), so: P.so.join('\n')}, ans:'', dsk:['','','',''], inc:true, lv: P.lv || null};
+  const solT = P.so.join(' ').replace(/\*\*/g, '');
+  if (want === 'tl') return it;
+  const all = P.st.join('\n');
+  // nhiều lựa chọn
+  const a = all.search(/(^|\n|\s)\**A\s*\**\s*[.)]\s*/);
+  if (a >= 0 && P.hint !== 'ds' && P.hint !== 'tln') { const tail = all.slice(a); const parts = tail.split(/(?:^|\s|\n)\**([A-D])\s*\**\s*[.)]\**\s*/).slice(1);
+    const o = {}; for (let i = 0; i + 1 < parts.length; i += 2) if (!o[parts[i]]) o[parts[i]] = parts[i+1].replace(/\s+/g, ' ').replace(/\*\*$/, '').replace(/\s*[.;]\s*$/, '').trim();
+    if (o.A != null && o.B != null && o.C != null && o.D != null) { it.y = 'mc'; it.f.st = all.slice(0, a).trim(); ['A','B','C','D'].forEach((k, i) => it.f['o'+i] = o[k]);
+      const k = /(Chọn|Đáp án|ĐÁP ÁN)\s*:?\s*([A-D])(?![\p{L}])/u.exec(solT); if (k) it.ans = k[2]; return it } }
+  // đúng / sai
+  const ds = [], stem = []; for (const l of P.st) { const m = /^\**\s*([a-d])\s*\)\s*\**\s*(.*)$/.exec(l); if (m && ds.length < 4 && m[1] === 'abcd'[ds.length]) ds.push(m[2]); else if (!ds.length) stem.push(l); else ds[ds.length-1] += ' ' + l }
+  if (ds.length === 4 && P.hint !== 'tln' && (P.hint === 'ds' || /Đúng|Sai|\(Đ\)|\(S\)/.test(all + solT))) { it.y = 'ds'; it.f.st = stem.join('\n'); ds.forEach((v, i) => it.f['i'+i] = v.trim()); it.dsk = dsKeys(solT); return it }
+  // trả lời ngắn
+  it.y = 'tln'; const m = /(Kết quả|Đáp số|Đáp án|ĐÁP ÁN|Trả lời)\s*:?\s*\**\s*(\$[^$]+\$|-?[\d.,/]+)/.exec(P.so.join(' ')); if (m) it.f.tans = m[2].replace(/\*\*/g, '').trim();
+  else if (P.so.length) { const last = P.so[P.so.length - 1].replace(/\*\*/g, ''); const mm = /\$([^$]+)\$[\s.]*$/.exec(last);
+    if (mm && /^(Vậy|Do đó|Suy ra|Nên)|\blà\b|=/.test(last)) { let v = mm[1]; if (v.includes('=')) v = v.split('=').pop(); v = v.trim();
+      if (/^-?\d+([.,]\d+)?$|^-?\\d?frac\{\d+\}\{\d+\}$|^-?\d+\/\d+$/.test(v)) it.f.tans = '$' + v + '$' } }
+  return it }
+
+// ---- PDF / ảnh tài liệu: nhờ AI đọc cả tệp
+const AI_DOC = (kind) => `Tệp đính kèm là tài liệu toán THCS tiếng Việt. Hãy chép lại các bài/câu trong đó thành JSON, không giải thêm, không giải thích. Trả về DUY NHẤT:
+{"dang":[{"ten":"tên dạng (nếu tài liệu chia dạng; không có thì rỗng)","bai":[{"loai":"${kind === 'tl' ? 'tl' : 'mc|ds|tln'}","de":"đề","phuong_an":["A","B","C","D"],"y":["ý a","ý b","ý c","ý d"],"dap_an":"A..D | chuỗi Đ/S 4 kí tự | kết quả | rỗng","loi_giai":"lời giải nếu có"}]}]}
+${kind === 'tl' ? 'Đây là bài tự luận: loai luôn là "tl", bỏ trống phuong_an, y, dap_an.' : 'mc = nhiều lựa chọn (có phương án A–D), ds = đúng/sai (4 ý a–d), tln = trả lời ngắn.'}
+Quy tắc trong mỗi chuỗi: xuống dòng bằng \\n giữa các đoạn; mọi công thức viết LaTeX trong $...$ (nhân đôi dấu \\ cho đúng JSON); chữ đậm **...**; chỗ có hình vẽ ghi [HÌNH]. Phương án không kèm chữ "A." đầu dòng. Lời giải ghép đúng vào bài của nó. Chép đủ tất cả các bài.`;
+async function aiReadDoc(file, kind){
+  const c = aiCfg(); if (!c.key) throw new Error('file PDF cần khoá AI để đọc (vào Gói & dữ liệu → Nhận dạng ảnh (AI))');
+  const b64 = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = no; r.readAsDataURL(file) });
+  const mime = file.type || (/\.pdf$/i.test(file.name) ? 'application/pdf' : 'image/png'); let txt = '';
+  if (c.prov === 'claude') { const isPdf = mime === 'application/pdf';
+    const r = await fetch('https://api.anthropic.com/v1/messages', {method:'POST', headers:{'content-type':'application/json','x-api-key':c.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify({model: c.model || 'claude-sonnet-5-5', max_tokens: 32000, messages:[{role:'user', content:[isPdf ? {type:'document', source:{type:'base64', media_type:'application/pdf', data:b64}} : {type:'image', source:{type:'base64', media_type:mime, data:b64}}, {type:'text', text:AI_DOC(kind)}]}]})});
+    const j = await r.json(); if (!r.ok) throw new Error((j.error && j.error.message) || r.status); txt = (j.content||[]).map(x => x.text||'').join('') }
+  else { const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(c.model || 'gemini-flash-latest')}:generateContent`, {method:'POST', headers:{'content-type':'application/json','x-goog-api-key':c.key},
+      body: JSON.stringify({contents:[{parts:[{text:AI_DOC(kind)}, {inline_data:{mime_type:mime, data:b64}}]}], generationConfig:{temperature:0, responseMimeType:'application/json', maxOutputTokens:65536}})});
+    const j = await r.json(); if (!r.ok) throw new Error((j.error && j.error.message) || r.status); txt = ((j.candidates||[])[0]?.content?.parts||[]).map(x => x.text||'').join('') }
+  txt = txt.replace(/^\s*```[a-z]*\s*|\s*```\s*$/g, ''); const a = txt.indexOf('{'), b = txt.lastIndexOf('}');
+  let J; try { J = JSON.parse(txt.slice(a, b + 1)) } catch(e) { throw new Error('AI trả về dữ liệu không đọc được (tệp có thể quá dài; thử chia nhỏ tệp)') }
+  const s = v => String(v ?? '').trim();
+  return (J.dang || []).map(d => ({name: s(d.ten), items: (d.bai || []).map(p => { const y = kind === 'tl' ? 'tl' : (['mc','ds','tln'].includes(p.loai) ? p.loai : 'tln');
+    const it = {y, f:{st: s(p.de), so: s(p.loi_giai)}, ans:'', dsk:['','','',''], inc:true};
+    if (y === 'mc') { (p.phuong_an || []).slice(0,4).forEach((v, i) => it.f['o'+i] = s(v).replace(/^\*{0,2}[A-D][.):]\*{0,2}\s*/, '')); if (/^[A-D]$/i.test(s(p.dap_an))) it.ans = s(p.dap_an).toUpperCase() }
+    if (y === 'ds') { (p.y || []).slice(0,4).forEach((v, i) => it.f['i'+i] = s(v).replace(/^\*{0,2}[a-d][.)]\*{0,2}\s*/, '')); const k = s(p.dap_an).toUpperCase().replace(/D/g, 'Đ'); if (/^[ĐS]{4}$/.test(k)) it.dsk = [...k] }
+    if (y === 'tln' && s(p.dap_an)) it.f.tans = s(p.dap_an);
+    return it }) })).filter(d => d.items.length) }
+
+// đọc một tệp bất kì -> [{name, items}]
+async function readAnyFile(file, kind, E, prog){
+  const n = file.name.toLowerCase();
+  if (/\.doc$/.test(n)) throw new Error('file .doc (Word 97–2003) trình duyệt không đọc được. Mở file bằng Word → Lưu thành (Save As) → chọn "Word Document (.docx)" hoặc PDF, rồi chọn lại');
+  if (/\.pdf$/.test(n) || /^image\//.test(file.type)) { prog && prog('AI đang đọc tệp… (tệp dài có thể mất 1–3 phút)'); const D = await aiReadDoc(file, kind); return {dangs: D, note: ''} }
+  let lines, note = '';
+  if (/\.docx$/.test(n)) { prog && prog('Đang đọc file Word…'); const r = await readDocx(file, prog); lines = blocksToLines(r.blocks, E);
+    note = `${r.neq} công thức MathType, ${r.nimg} hình${r.bad ? `, ${r.bad} công thức không đọc được` : ''}.` }
+  else if (/\.(tex|txt|md)$/.test(n)) lines = texToLines(await file.text());
+  else throw new Error('chỉ nhận file .docx, .pdf, .tex, .txt hoặc ảnh');
+  const R = splitProblems(lines); let D = R.dangs;
+  if (!D.length) { const t = lines.filter(Boolean); if (t.length) D = [{name:'', meth:[], items:[{st: t, so: []}]}]; note += ' Không thấy "Bài 1." / "Câu 1." nên gộp cả tệp thành một bài.' }
+  return {dangs: D.map(d => ({name: d.name, meth: d.meth || [], items: d.items.map(p => shapeItem(p, kind === 'tl' ? 'tl' : 'any'))})), theory: R.theory, note} }
+
+/* ---------------- cấu trúc: chủ đề / dạng / chương / bài học (Admin) ---------------- */
+const busy = () => S.ed || S.sf || S.imp;
+const uid36 = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+const lines2h = (s, E) => String(s||'').split('\n').map(x => x.trim()).filter(Boolean).map(x => t1(x, E));
+const h2lines = (arr, E) => (arr||[]).map(h => h2t(h, E)).join('\n');
+async function saveIdx(idx){ await S.B.set(idxPath(S.grade), idx); S.idxs[S.grade] = S.idx = idx; rebuildP() }
+async function removePids(pids){ const set = new Set(pids); const ops = pids.map(p => ({p:'problems/'+p, del:1}));
+  const asg = S.asg.filter(a => (a.pids||[]).some(p => set.has(p)));
+  asg.forEach(a => a.pids.filter(p => set.has(p)).forEach(p => ops.push({p:`assignments/${a.id}/items/${p}`, del:1})));
+  if (ops.length) await batchChunks(ops, k => note(`Đang xoá: ${k}/${ops.length}…`, 1));
+  for (const a of asg) await S.B.update('assignments/'+a.id, {pids: a.pids.filter(p => !set.has(p))}) }
+const tnthOf = async bid => S.tnth[bid] || (S.tnth[bid] = (await S.B.get('tnth/'+bid)) || {theory:[], methods:{}});
+
+// ---- biểu mẫu
+function openForm(kind, mode, ref){ const E = {imgs:{}, ni:0}; const I = S.idx; let f = {};
+  if (kind === 'topic' && mode === 'edit') { const T = topicById(ref); f = {name:T.name, sgk:T.sgk||'', short:T.short||SHORT[T.id]||''} }
+  if (kind === 'topic' && mode === 'new') f = {name:'', sgk:`SGK Toán ${S.grade} KNTT`, short:'', dangs:''};
+  if (kind === 'dang' && mode === 'edit') { const d = anyDang(ref); f = {name:h2t(d.name, E), sign:h2t(d.sign, E), steps:h2lines(d.steps, E), know:h2lines(d.know, E), warn:h2lines(d.warn, E)} }
+  if (kind === 'dang' && mode === 'new') f = {name:'', sign:'', steps:'', know:'', warn:''};
+  if (kind === 'ch') f = mode === 'edit' ? {name: chById(ref).name} : {name: `Chương ${(I.tn||[]).length + 1}. `};
+  if (kind === 'bai' && mode === 'new') { const C = chById(ref); const no = Math.max(0, ...(I.tn||[]).flatMap(c => c.bais.map(b => +b.no || 0))) + 1; f = {name:`Bài ${no}. `, no, dangs:'', theory:''} }
+  if (kind === 'bai' && mode === 'edit') { const B = baiById(ref); f = {name:B.name, no:B.no, theory:'…'} }
+  if (kind === 'tdang') f = mode === 'edit' ? {name: anyDang(ref).name, meth:'…'} : {name:'', meth:''};
+  S.sf = {kind, mode, ref, f, E}; S.pid = null; S.ed = null; S.imp = null; render(); scrollTo(0,0);
+  if (kind === 'bai' && mode === 'edit') tnthOf(ref).then(t => { if (S.sf && S.sf.ref === ref) { S.sf.f.theory = p2t(t.theory, E); sfDraw() } });
+  if (kind === 'tdang' && mode === 'edit') { const bid = (I.tn||[]).flatMap(c => c.bais).find(b => b.dangs.some(x => x.id === ref)).id; tnthOf(bid).then(t => { if (S.sf && S.sf.ref === ref) { S.sf.f.meth = p2t((t.methods||{})[ref], E); sfDraw() } }) } }
+const fIn = (k, lab, help, rows) => { const v = S.sf.f[k] ?? ''; return `<div class="edf"><label for="sf_${k}"><b>${lab}</b></label>${help?`<p class="hint">${help}</p>`:''}${rows ? `<textarea id="sf_${k}" data-sf="${k}" rows="${rows}" spellcheck="false">${esc(v)}</textarea>` : `<input type="text" id="sf_${k}" data-sf="${k}" value="${esc(v)}">`}</div>` };
+const fileBox = (lab) => `<div class="card dropf"><b>${lab}</b><p class="hint">Chọn file <b>.docx</b> (đọc được cả công thức MathType và hình vẽ), <b>.pdf</b> hoặc ảnh (cần khoá AI), hoặc <b>.tex / .txt</b>. Trong file, mỗi bài bắt đầu bằng "Bài 1." / "Câu 1.", lời giải bắt đầu bằng "Lời giải" hoặc "Giải"; dòng "Dạng 1. …" sẽ tách thành dạng.</p>
+  <div class="row"><input type="file" id="sffile" accept=".docx,.doc,.pdf,.tex,.txt,image/*"><span id="sfname" class="hint">${S.sf && S.sf.file ? esc(S.sf.file.name) : ''}</span></div></div>`;
+function sfDraw(){ const F = S.sf, box = $('#edbox'); if (!F || !box) return; let title = '', body = '', del = '';
+  const K = F.kind, ed = F.mode === 'edit';
+  if (K === 'topic') { title = ed ? 'Sửa chủ đề' : 'Thêm chủ đề tự luận';
+    body = fIn('name', 'Tên chủ đề') + fIn('sgk', 'Ghi chú SGK', 'Ví dụ: SGK Toán 7 KNTT – Chương II') + fIn('short', 'Tên viết tắt', 'Hiện trong mã bài, ví dụ "Căn thức". Để trống sẽ dùng "CĐ 3"…')
+      + (ed ? '' : fIn('dangs', 'Các dạng', 'Mỗi dòng một dạng. Có thể để trống nếu nhập từ file có dòng "Dạng 1. …".', 4) + fileBox('Nhập bài từ file (không bắt buộc)'));
+    if (ed) del = `<button class="btn red" data-sfdel>🗑 Xoá chủ đề và toàn bộ bài</button>` }
+  if (K === 'dang') { title = ed ? 'Sửa dạng' : 'Thêm dạng';
+    body = fIn('name', 'Tên dạng') + fIn('sign', 'Dấu hiệu nhận ra', '', 2) + fIn('steps', 'Các bước làm', 'Mỗi dòng một bước. Công thức gõ $...$', 4) + fIn('know', 'Kiến thức dùng', 'Mỗi dòng một ý', 3) + fIn('warn', 'Lưu ý, sai lầm hay gặp', 'Mỗi dòng một ý', 3);
+    if (ed) del = `<button class="btn red" data-sfdel>🗑 Xoá dạng và toàn bộ bài</button>` }
+  if (K === 'ch') { title = ed ? 'Sửa chương' : 'Thêm chương trắc nghiệm'; body = fIn('name', 'Tên chương'); if (ed) del = `<button class="btn red" data-sfdel>🗑 Xoá chương và toàn bộ câu hỏi</button>` }
+  if (K === 'bai') { title = ed ? 'Sửa bài học' : 'Thêm bài học';
+    body = fIn('name', 'Tên bài học') + (ed ? '' : fIn('dangs', 'Các dạng', 'Mỗi dòng một dạng. Để trống sẽ tạo dạng "Tổng hợp".', 3)) + fIn('theory', 'Tóm tắt lí thuyết', 'Mỗi dòng một đoạn, công thức $...$', 6)
+      + (ed ? '' : fileBox('Nhập câu hỏi từ file (không bắt buộc)'));
+    if (ed) del = `<button class="btn red" data-sfdel>🗑 Xoá bài học và toàn bộ câu hỏi</button>` }
+  if (K === 'tdang') { title = ed ? 'Sửa dạng' : 'Thêm dạng'; body = fIn('name', 'Tên dạng') + fIn('meth', 'Phương pháp giải', 'Mỗi dòng một đoạn, công thức $...$', 5);
+    if (ed) del = `<button class="btn red" data-sfdel>🗑 Xoá dạng và toàn bộ câu hỏi</button>` }
+  box.innerHTML = `<div class="row sp"><button class="btn sm" data-sfcancel>← Huỷ</button><span class="src">Toán ${S.grade}</span></div><h1 style="margin-top:14px">${title}</h1>${body}
+    <div class="row" style="margin-top:18px"><button class="btn pri" data-sfsave>${F.file ? 'Đọc file và xem trước →' : '💾 Lưu'}</button><button class="btn" data-sfcancel>Huỷ</button>${del}<span id="sfst" class="hint"></span></div>` }
+async function sfSave(){ const F = S.sf, f = F.f, E = F.E, st = $('#sfst'), K = F.kind; if (!(f.name||'').trim()) { note('Cần nhập tên.'); return }
+  const idx = cloneIdx(); idx.topics = idx.topics || []; idx.tn = idx.tn || [];
+  const dangLines = s => String(s||'').split('\n').map(x => x.replace(/^\s*(Dạng|DẠNG)\s*\d+\s*[.:]\s*/, '').trim()).filter(Boolean);
+  const mkD = (pre, name) => ({id: uid36(pre + '_'), name: t1(name, E), sign:'', steps:[], know:[], warn:[], items:[]});
+  const mkTD = (pre, name) => ({id: uid36(pre + 'd'), name: name, items:[]});
+  let go2 = null;
+  if (K === 'topic') { if (F.mode === 'edit') { const T = idx.topics.find(t => t.id === F.ref); T.name = f.name.trim(); T.sgk = f.sgk.trim(); T.short = f.short.trim(); go2 = () => { S.topic = T.id } }
+    else { const T = {id: uid36('t'), name: f.name.trim(), sgk: f.sgk.trim(), short: f.short.trim(), dangs: []}; dangLines(f.dangs).forEach(n => T.dangs.push(mkD(T.id, n)));
+      if (F.file) { S.sf = null; return startImport(F.file, {mode:'topic', T, idx}) }
+      if (!T.dangs.length) T.dangs.push(mkD(T.id, 'Dạng 1')); idx.topics.push(T); go2 = () => { S.topic = T.id; S.dang = T.dangs[0].id } } }
+  if (K === 'dang') { const T = F.mode === 'edit' ? idx.topics.find(t => t.dangs.some(x => x.id === F.ref)) : idx.topics.find(t => t.id === F.ref);
+    let d = F.mode === 'edit' ? T.dangs.find(x => x.id === F.ref) : mkD(T.id, f.name); if (F.mode === 'new') T.dangs.push(d);
+    Object.assign(d, {name: t1(f.name, E), sign: t1(f.sign, E), steps: lines2h(f.steps, E), know: lines2h(f.know, E), warn: lines2h(f.warn, E)}); go2 = () => { S.topic = T.id; S.dang = d.id } }
+  if (K === 'ch') { if (F.mode === 'edit') idx.tn.find(c => c.id === F.ref).name = f.name.trim(); else { const C = {id: uid36('c'), name: f.name.trim(), bais: []}; idx.tn.push(C); go2 = () => { S.ch = C.id } } }
+  if (K === 'bai') { const tdoc = {theory: t2p(f.theory, E), methods: {}};
+    if (F.mode === 'edit') { const B = idx.tn.flatMap(c => c.bais).find(b => b.id === F.ref); B.name = f.name.trim(); const old = await tnthOf(B.id); tdoc.methods = old.methods || {};
+      if (st) st.textContent = 'Đang lưu…'; if (!await safe(async () => { await S.B.set('tnth/'+B.id, tdoc); await saveIdx(idx); return true }, 'Không lưu được')) return; S.tnth[B.id] = tdoc; S.sf = null; flash('Đã lưu.'); render(); return }
+    const C = idx.tn.find(c => c.id === F.ref); const B = {id: uid36('b'), no: f.no, name: f.name.trim(), dangs: []}; (dangLines(f.dangs).length ? dangLines(f.dangs) : ['Tổng hợp']).forEach(n => B.dangs.push(mkTD(B.id, n)));
+    if (F.file) { S.sf = null; return startImport(F.file, {mode:'bai', C, B, tdoc, idx}) }
+    C.bais.push(B); if (st) st.textContent = 'Đang lưu…';
+    if (!await safe(async () => { await S.B.set('tnth/'+B.id, tdoc); await saveIdx(idx); return true }, 'Không lưu được')) return; S.tnth[B.id] = tdoc; S.sf = null; S.ch = C.id; S.bai = B.id; flash('Đã thêm bài học.'); render(); return }
+  if (K === 'tdang') { let B, d; if (F.mode === 'edit') { B = idx.tn.flatMap(c => c.bais).find(b => b.dangs.some(x => x.id === F.ref)); d = B.dangs.find(x => x.id === F.ref); d.name = f.name.trim() }
+    else { B = idx.tn.flatMap(c => c.bais).find(b => b.id === F.ref); d = mkTD(B.id, f.name.trim()); B.dangs.push(d) }
+    const t = JSON.parse(JSON.stringify(await tnthOf(B.id))); t.methods = t.methods || {}; const m = t2p(f.meth, E); if (m.length) t.methods[d.id] = m; else delete t.methods[d.id];
+    if (st) st.textContent = 'Đang lưu…'; if (!await safe(async () => { await S.B.set('tnth/'+B.id, t); await saveIdx(idx); return true }, 'Không lưu được')) return; S.tnth[B.id] = t; S.sf = null; S.bai = B.id; flash('Đã lưu.'); render(); return }
+  if (st) st.textContent = 'Đang lưu…';
+  if (!await safe(async () => { await saveIdx(idx); return true }, 'Không lưu được')) return;
+  S.sf = null; go2 && go2(); flash('Đã lưu.'); render(); scrollTo(0,0) }
+async function sfDelete(){ const F = S.sf, idx = cloneIdx(), K = F.kind; let pids = [], bids = [], after = () => {};
+  if (K === 'topic') { const T = idx.topics.find(t => t.id === F.ref); pids = T.dangs.flatMap(d => d.items.map(x => x[0])); idx.topics = idx.topics.filter(t => t !== T); after = () => { S.topic = null } }
+  if (K === 'dang') { const T = idx.topics.find(t => t.dangs.some(d => d.id === F.ref)); const d = T.dangs.find(x => x.id === F.ref); pids = d.items.map(x => x[0]); T.dangs = T.dangs.filter(x => x !== d); after = () => { S.dang = null } }
+  if (K === 'ch') { const C = idx.tn.find(c => c.id === F.ref); pids = C.bais.flatMap(b => b.dangs.flatMap(d => d.items.map(x => x[0]))); bids = C.bais.map(b => b.id); idx.tn = idx.tn.filter(c => c !== C); after = () => { S.ch = null } }
+  if (K === 'bai') { const C = idx.tn.find(c => c.bais.some(b => b.id === F.ref)); const B = C.bais.find(b => b.id === F.ref); pids = B.dangs.flatMap(d => d.items.map(x => x[0])); bids = [B.id]; C.bais = C.bais.filter(b => b !== B); after = () => { S.bai = null } }
+  if (K === 'tdang') { const B = idx.tn.flatMap(c => c.bais).find(b => b.dangs.some(d => d.id === F.ref)); const d = B.dangs.find(x => x.id === F.ref); pids = d.items.map(x => x[0]); B.dangs = B.dangs.filter(x => x !== d) }
+  note(`Đang xoá ${pids.length} bài…`, 1);
+  const ok = await safe(async () => { await removePids(pids); for (const b of bids) await S.B.del('tnth/'+b); await saveIdx(idx); return true }, 'Không xoá được');
+  if (ok) { S.sf = null; after(); flash(`Đã xoá${pids.length ? ' cùng ' + pids.length + ' bài' : ''}.`); render() } }
+
+// ---- nhập từ file: xem trước rồi lưu
+async function startImport(file, target){
+  const kind = target.mode === 'topic' || target.kind === 'tl' ? 'tl' : 'tn';
+  const E = {imgs:{}, ni:0}; S.imp = {target, file:file.name, E, dangs:[], loading:'Đang đọc tệp…', note:''}; S.sf = null; render(); scrollTo(0,0);
+  try { const r = await readAnyFile(file, kind, E, t => { if (S.imp) { S.imp.loading = t; impDraw() } });
+    if (!S.imp) return; const pre = target.mode === 'topic' ? target.T.dangs : target.mode === 'bai' ? target.B.dangs : [];
+    r.dangs.forEach((d, i) => { if (pre[i]) d.name = pre[i].name.replace(/<[^>]+>/g, '') }); S.imp.dangs = r.dangs; S.imp.theory = r.theory || []; S.imp.note = r.note; S.imp.loading = '';
+    if (!r.dangs.length) S.imp.err = 'Không tìm thấy bài nào trong tệp.' }
+  catch(e) { console.error(e); if (S.imp) { S.imp.loading = ''; S.imp.err = 'Không đọc được tệp: ' + (e.message || e) } }
+  impDraw() }
+function impItemHTML(it, di, ii){ const E = S.imp.E, y = it.y, open = it.open;
+  const pv = s => paras(t2p(s, E));
+  let extra = '';
+  if (y === 'mc') extra = `<div class="opts sm">${['A','B','C','D'].map((k, i) => `<div class="opt ${it.ans===k?'ok':''}"><b>${k}</b><span>${M(t1(it.f['o'+i]||'', E))}</span></div>`).join('')}</div>${it.ans?'':'<p class="hint">Chưa thấy đáp án, sau khi lưu bấm "Sửa bài" để chọn.</p>'}`;
+  if (y === 'ds') extra = `<div class="opts sm">${[0,1,2,3].map(i => `<div class="opt"><b>${'abcd'[i]}</b><span>${M(t1(it.f['i'+i]||'', E))}</span>${it.dsk[i]?`<span class="tag">${it.dsk[i]==='Đ'?'Đúng':'Sai'}</span>`:''}</div>`).join('')}</div>`;
+  if (y === 'tln') extra = it.f.tans ? `<p>Đáp án: <b>${M(t1(it.f.tans, E))}</b></p>` : '<p class="hint">Chưa thấy đáp án.</p>';
+  const tsel = S.imp.target.mode === 'topic' || S.imp.target.kind === 'tl' ? '' : `<select data-impy="${di}.${ii}" style="width:auto;min-height:32px;padding:2px 8px;font-size:13px">${['mc','ds','tln'].map(t => `<option value="${t}" ${t===y?'selected':''}>${TYPEN[t]}</option>`).join('')}</select>`;
+  return `<div class="impit ${it.inc?'':'off'}"><div class="row sp"><label class="checks" style="margin:0"><label><input type="checkbox" data-impinc="${di}.${ii}" ${it.inc?'checked':''}> Bài ${ii+1}</label></label>${tsel}<button type="button" class="btn sm" data-impopen="${di}.${ii}">${open?'Thu gọn':'Sửa'}</button></div>
+    ${open ? `<label class="hint">Đề</label><textarea rows="5" data-impf="${di}.${ii}.st" spellcheck="false">${esc(it.f.st)}</textarea><label class="hint">Lời giải</label><textarea rows="5" data-impf="${di}.${ii}.so" spellcheck="false">${esc(it.f.so)}</textarea>` : ''}
+    <div class="pq">${pv(it.f.st)}${extra}</div>${it.f.so ? `<details class="ex"><summary>Lời giải</summary><div class="pq">${pv(it.f.so)}</div></details>` : '<p class="hint">Không có lời giải.</p>'}</div>` }
+function impDraw(){ const I = S.imp, box = $('#edbox'); if (!I || !box) return; const T = I.target;
+  const where = T.mode === 'topic' ? `Chủ đề mới: <b>${esc(T.T.name)}</b>` : T.mode === 'bai' ? `Bài học mới: <b>${esc(T.B.name)}</b>` : `Vào dạng: <b>${M(anyDang(T.did).name)}</b>`;
+  const n = I.dangs.reduce((u, d) => u + d.items.filter(x => x.inc).length, 0);
+  const multi = T.mode !== 'dang';
+  box.innerHTML = `<div class="row sp"><button class="btn sm" data-impcancel>← Huỷ</button><span class="src">${esc(I.file)}</span></div><h1 style="margin-top:14px">Xem trước khi nhập</h1><p>${where}</p>
+    ${I.loading ? `<div class="card"><p><span class="spin"></span> ${esc(I.loading)}</p></div>` : ''}${I.err ? `<div class="lockbox">${esc(I.err)}</div>` : ''}
+    ${I.dangs.length ? `<p class="hint">Đọc được ${I.dangs.reduce((u, d) => u + d.items.length, 0)} bài${multi ? ` trong ${I.dangs.length} dạng` : ''}. ${esc(I.note||'')} Bỏ chọn bài không muốn nhập; bấm "Sửa" để chỉnh nhanh, công thức gõ $...$.</p>` : ''}
+    ${I.dangs.map((d, di) => `<div class="card"><div class="row sp">${multi ? `<input type="text" data-impdn="${di}" value="${esc(d.name || 'Dạng ' + (di+1))}" style="flex:1;font-weight:700">` : `<b>${d.name ? esc(d.name) : 'Các bài trong tệp'}</b>`}<span class="hint">${d.items.length} bài</span></div>${d.items.map((it, ii) => impItemHTML(it, di, ii)).join('')}</div>`).join('')}
+    ${I.dangs.length ? `<div class="row stick"><button class="btn pri" data-impsave>💾 Lưu ${n} bài</button><button class="btn" data-impcancel>Huỷ</button><span id="impst2" class="hint"></span></div>` : ''}` }
+function buildDoc(E, it, base){ const y = it.y, doc = {...base, y, src: base.src || '', st: t2p(it.f.st, E), so: t2p(it.f.so || '', E)};
+  if (y === 'mc') { doc.opts = ['A','B','C','D'].map((k, i) => ({k, h: t1(it.f['o'+i]||'', E)})); doc.ans = it.ans || '' }
+  if (y === 'ds') { doc.items = ['a','b','c','d'].map((k, i) => ({k, h: t1(it.f['i'+i]||'', E)})); doc.ans = (it.dsk||[]).every(v => v) ? it.dsk.join('') : '' }
+  if (y === 'tln') { const v = (it.f.tans||'').trim(); doc.ans = v ? (/\$|\\\(/.test(v) ? t1(v, E) : '\\(' + mEsc(v) + '\\)') : '' }
+  return doc }
+async function impSave(){ const I = S.imp, T = I.target, E = I.E, st = $('#impst2'); const idx = T.idx || cloneIdx(); let goto = () => {};
+  const ops = []; const add = (d, it, base) => { const pid = d.id + 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); const doc = buildDoc(E, it, base);
+    const item = base.bai ? [pid, it.y, 0, it.lv || 'TH'] : [pid, it.y, 0]; d.items.push(item); if (base.bai) doc.lv = item[3]; ops.push({p:'problems/'+pid, doc, d, pid}) };
+  const used = I.dangs.map(d => ({...d, items: d.items.filter(x => x.inc)})).filter(d => d.items.length);
+  if (T.mode === 'dang') { const d = findDang(idx, T.did); const m = S.P[d.items[0]?.[0]] || {}; const base = T.kind === 'tl' ? {t: T.t, d: d.id} : {t: T.t, bai: T.bai, d: d.id};
+    used.forEach(D => D.items.forEach(it => add(d, it, base))); goto = () => { if (T.kind === 'tl') { S.topic = T.t; S.dang = d.id } else { S.ch = T.t; S.bai = T.bai } } }
+  if (T.mode === 'topic') { const Tp = T.T; const named = Tp.dangs.slice();
+    used.forEach((D, i) => { let d = named[i]; if (d && D.name) d.name = t1(D.name, E); if (!d) { d = {id: uid36(Tp.id + '_'), name: t1(D.name || ('Dạng ' + (Tp.dangs.length + 1)), E), sign:'', steps:[], know:[], warn:[], items:[]}; Tp.dangs.push(d) } D.items.forEach(it => add(d, it, {t: Tp.id, d: d.id})) });
+    if (!Tp.dangs.length) Tp.dangs.push({id: uid36(Tp.id + '_'), name:'Dạng 1', sign:'', steps:[], know:[], warn:[], items:[]}); idx.topics.push(Tp); goto = () => { S.topic = Tp.id; S.dang = Tp.dangs[0].id } }
+  if (T.mode === 'bai') { const C = idx.tn.find(c => c.id === T.C.id), B = T.B; const named = B.dangs.slice();
+    used.forEach((D, i) => { let d = named[i]; if (d && D.name) d.name = D.name; if (!d) { d = {id: uid36(B.id + 'd'), name: D.name || ('Dạng ' + (B.dangs.length + 1)), items:[]}; B.dangs.push(d) } D.items.forEach(it => add(d, it, {t: C.id, bai: B.id, d: d.id})) });
+    used.forEach((D, i) => { const d = B.dangs[i]; if (d && (D.meth||[]).length) T.tdoc.methods[d.id] = t2p(D.meth.join('\n'), E) });
+    if (!T.tdoc.theory.length && (I.theory||[]).length) T.tdoc.theory = t2p(I.theory.join('\n'), E);
+    C.bais.push(B); goto = () => { S.ch = C.id; S.bai = B.id } }
+  allDangs(idx).forEach(d => reflag(d, S.cfg.basicN));
+  const flag = {}; allDangs(idx).forEach(d => d.items.forEach(x => flag[x[0]] = !!x[2]));
+  const big = ops.find(o => new Blob([JSON.stringify(o.doc)]).size > 900000); if (big) { note('Có bài quá nặng (hình quá nhiều/lớn). Bỏ chọn bài đó hoặc xoá bớt hình.'); return }
+  if (st) st.textContent = 'Đang lưu…';
+  const ok = await safe(async () => { await batchChunks(ops.map(o => ({p: o.p, d: {...o.doc, basic: flag[o.pid]}})), k => { if (st) st.textContent = `Đang lưu ${k}/${ops.length}…` });
+    if (T.mode === 'bai') await S.B.set('tnth/' + T.B.id, T.tdoc); await saveIdx(idx); return true }, 'Không lưu được');
+  if (!ok) { if (st) st.textContent = ''; return }
+  if (T.mode === 'bai') S.tnth[T.B.id] = T.tdoc;
+  S.imp = null; goto(); flash(`Đã nhập ${ops.length} bài.`); render(); scrollTo(0,0) }
+function pickImport(target){ const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.docx,.doc,.pdf,.tex,.txt,image/*';
+  inp.onchange = () => { if (inp.files[0]) startImport(inp.files[0], target) }; inp.click() }
+
+const panelDraw = () => S.ed ? edDraw() : S.sf ? sfDraw() : impDraw();
 /* ---------------- tray ---------------- */
 function renderTray(){ if (!isStaff() || !S.sel.size || curView()==='giao') { $('#tray').innerHTML = ''; return }
   $('#tray').innerHTML = `<div class="tray"><b>Đã chọn ${S.sel.size} bài</b><button class="btn sm" data-clear>Bỏ chọn</button><button class="btn sm pri" data-go="giao">Tạo bài giao →</button></div>` }
@@ -1051,7 +1589,17 @@ const anyDang = id => allDangs(S.idx).find(d => d.id === id);
 function openPid(pid){ const m = S.P[pid]; if (m && m.g !== S.grade) { S.grade = m.g; S.idx = S.idxs[m.g] || null } S.pid = pid; S.openSol = false; if (m) { if (m.k === 'tn') { S.ch = m.t; S.bai = m.bai; S.ttyp = m.y } else { S.topic = m.t; S.dang = m.d } } render(); scrollTo(0,0) }
 document.addEventListener('click', async e => {
   const t = e.target.closest('button'); if (!t) return; const D = t.dataset;
-  if (S.ed && !t.closest('#edbox') && !('signout' in D)) { if (!confirm('Bỏ bài đang soạn (chưa lưu)?')) return; S.ed = null }
+  if (busy() && !t.closest('#edbox') && !('signout' in D)) { if (!confirm('Bỏ phần đang soạn (chưa lưu)?')) return; S.ed = S.sf = S.imp = null }
+  if (D.sfnew) { openForm(D.sfnew, 'new', D.ref); return }
+  if (D.sfedit) { openForm(D.sfedit, 'edit', D.ref); return }
+  if ('sfcancel' in D) { S.sf = null; render(); return }
+  if ('sfsave' in D) { t.disabled = true; await sfSave(); if (t.isConnected) t.disabled = false; return }
+  if ('sfdel' in D) { if (!t.dataset.sure) { t.dataset.sure = 1; t.textContent = 'Bấm lần nữa để xoá hẳn (không khôi phục được)'; return } t.disabled = true; await sfDelete(); return }
+  if (D.impdang) { const d = anyDang(D.impdang); const T = S.idx.topics.find(x => x.dangs.includes(d));
+    if (T) pickImport({mode:'dang', kind:'tl', did:d.id, t:T.id}); else { const C = S.idx.tn.find(c => c.bais.some(b => b.dangs.includes(d))); const B = C.bais.find(b => b.dangs.includes(d)); pickImport({mode:'dang', kind:'tn', did:d.id, t:C.id, bai:B.id}) } return }
+  if ('impcancel' in D) { S.imp = null; render(); return }
+  if ('impsave' in D) { t.disabled = true; await impSave(); if (t.isConnected) t.disabled = false; return }
+  if (D.impopen) { const [a, b] = D.impopen.split('.').map(Number); const it = S.imp.dangs[a].items[b]; it.open = !it.open; impDraw(); return }
   if ('edcancel' in D) { const p = S.ed && S.ed.pid; S.ed = null; if (p) openPid(p); else render(); return }
   if ('edsave' in D) { t.disabled = true; await saveEditor(); t.disabled = false; return }
   if (D.edimg || D.edocr) { S._edT = {name: D.edimg || D.edocr, mode: D.edimg ? 'img' : 'ocr'}; const f = $('#edfile'); f.value = ''; f.click(); return }
@@ -1116,6 +1664,9 @@ document.addEventListener('change', e => { const t = e.target;
   if (t.id === 'imp' && t.files[0]) importData(t.files[0]);
   if (t.id === 'edfile' && t.files[0] && S._edT) edImage(t.files[0], S._edT.name, S._edT.mode);
   if (t.id === 'edlv' && S.ed) S.ed.lv = t.value;
+  if (t.id === 'sffile' && S.sf) { S.sf.file = t.files[0] || null; sfDraw() }
+  if (t.dataset.impinc && S.imp) { const [a, b] = t.dataset.impinc.split('.').map(Number); S.imp.dangs[a].items[b].inc = t.checked; t.closest('.impit').classList.toggle('off', !t.checked); const n = S.imp.dangs.reduce((u, d) => u + d.items.filter(x => x.inc).length, 0); const sb = document.querySelector('[data-impsave]'); if (sb) sb.textContent = `💾 Lưu ${n} bài` }
+  if (t.dataset.impy && S.imp) { const [a, b] = t.dataset.impy.split('.').map(Number); S.imp.dangs[a].items[b].y = t.value; impDraw() }
 });
 document.addEventListener('paste', e => { if (!S.ed || !e.target.closest) return; const ta = e.target.closest('[data-ef],#edall'); if (!ta) return;
   const cd = e.clipboardData; if (!cd) return; const it = [...cd.items].find(i => i.kind === 'file' && i.type.startsWith('image/'));
@@ -1124,6 +1675,9 @@ document.addEventListener('paste', e => { if (!S.ed || !e.target.closest) return
   e.preventDefault(); edImage(it.getAsFile(), ta.dataset.ef, S.ed.pm === 'ocr' && aiOn() ? 'ocr' : 'img') });
 document.addEventListener('input', e => { const x = e.target;
   if (S.ed && x.dataset && x.dataset.ef) { edInput(x.dataset.ef, x.value); return }
+  if (S.sf && x.dataset && x.dataset.sf) { S.sf.f[x.dataset.sf] = x.value; return }
+  if (S.imp && x.dataset && x.dataset.impf) { const [a, b, k] = x.dataset.impf.split('.'); S.imp.dangs[+a].items[+b].f[k] = x.value; return }
+  if (S.imp && x.dataset && x.dataset.impdn) { S.imp.dangs[+x.dataset.impdn].name = x.value; return }
   if (S.ed && x.id === 'edsrc') { S.ed.src = x.value; return }
   if (x.id === 'edall') { x.value = ''; return } });
 document.addEventListener('input', e => { if (e.target.id === 'uq') { S.q = e.target.value; clearTimeout(S._qt); S._qt = setTimeout(() => { render(); const i = $('#uq'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length) } }, 300) } });
