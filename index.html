@@ -199,27 +199,16 @@ pre.cfg{background:var(--card);border:1.5px solid var(--line);border-radius:10px
 <p class="hint">Mở trực tiếp file trên máy (file://) sẽ không đăng nhập Google được. Để thử trên máy, dùng địa chỉ http://localhost.</p></div></template>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 <script type="module">
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
+// ===================== CẤU HÌNH =====================
+// 1) Cấu hình Firebase (chỉ dán phần giá trị, KHÔNG dán các dòng import)
+const FIREBASE_CONFIG = {
   apiKey: "AIzaSyD_MHZ8ppUHaf7AAYq7G35Gdh-047UzZPQ",
   authDomain: "ontaptoan9-ba41e.firebaseapp.com",
   projectId: "ontaptoan9-ba41e",
   storageBucket: "ontaptoan9-ba41e.firebasestorage.app",
   messagingSenderId: "116759498244",
-  appId: "1:116759498244:web:0bfb676ad8098935beef51",
-  measurementId: "G-RWJCEQ6FKL"
+  appId: "1:116759498244:web:0bfb676ad8098935beef51"
 };
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 // 2) Gmail của Admin (quản trị cao nhất). Phải trùng với danh sách trong firestore.rules
 const ADMIN_EMAILS = ["doanvanlamvb@gmail.com"];
 // ====================================================================
