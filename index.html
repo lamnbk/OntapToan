@@ -411,26 +411,30 @@ async function initBackend(){
   const unpack = d => { if (typeof d.j === 'string') { const {j, ...o} = d; try { return {...o, ...JSON.parse(j)} } catch(e) { return o } } return dec(d) };
   const sd = s => s.exists() ? {id:s.id, ...unpack(s.data())} : null;
   const q = (c, wh) => F.query(col(c), ...(wh||[]).map(w => F.where(...w)));
+  // Firestore tự thử lại mãi khi hết hạn mức ghi hoặc mất mạng, lệnh ghi không bao giờ báo lỗi
+  // mà màn hình vẫn hiện như đã ghi. Đặt giới hạn thời gian để báo lỗi rõ ràng.
+  const tmo = (pr, ms = 45000) => Promise.race([pr, new Promise((_, no) => setTimeout(() => no({code:'write-timeout', message:'write-timeout'}), ms))]);
   return {
     onAuth: cb => A.onAuthStateChanged(auth, u => cb(u && {uid:u.uid, email:u.email, name:u.displayName, verified:u.emailVerified})),
     signIn: async () => { const p = new A.GoogleAuthProvider(); p.setCustomParameters({prompt:'select_account'});
       try { await A.signInWithPopup(auth, p) } catch(e) { if (/popup/.test(e.code||'')) await A.signInWithRedirect(auth, p); else throw e } },
     signOut: () => A.signOut(auth),
     get: async p => sd(await F.getDoc(ref(p))),
-    set: (p, d, merge) => F.setDoc(ref(p), pack(d), merge ? {merge:true} : {}),
-    update: (p, d) => F.updateDoc(ref(p), pack(d)),
-    del: p => F.deleteDoc(ref(p)),
+    set: (p, d, merge) => tmo(F.setDoc(ref(p), pack(d), merge ? {merge:true} : {})),
+    update: (p, d) => tmo(F.updateDoc(ref(p), pack(d))),
+    del: p => tmo(F.deleteDoc(ref(p))),
     list: async (c, wh) => (await F.getDocs(q(c, wh))).docs.map(sd),
     watch: (p, cb, err) => F.onSnapshot(ref(p), s => cb(sd(s)), err || (()=>{})),
     watchQ: (c, wh, cb, err) => F.onSnapshot(q(c, wh), s => cb(s.docs.map(sd)), err || (()=>{})),
-    batch: async ops => { const b = F.writeBatch(db); ops.forEach(o => o.del ? b.delete(ref(o.p)) : b.set(ref(o.p), pack(o.d), o.merge ? {merge:true} : {})); await b.commit() },
+    batch: async ops => { const b = F.writeBatch(db); ops.forEach(o => o.del ? b.delete(ref(o.p)) : b.set(ref(o.p), pack(o.d), o.merge ? {merge:true} : {})); await tmo(b.commit(), 90000) },
     ts: d => d ? F.Timestamp.fromDate(d) : null, now: () => F.serverTimestamp(),
     count: async c => (await F.getCountFromServer(col(c))).data().count,
   };
 }
 const toDate = t => !t ? null : t.toDate ? t.toDate() : t.seconds ? new Date(t.seconds*1000) : new Date(t);
 const ymd = t => { const d = toDate(t); return d ? d.toISOString().slice(0,10) : '' };
-const errMsg = e => (e && (e.code||e.message)) || 'lỗi';
+const WTO = 'máy chủ không xác nhận lệnh ghi. Thường do Firebase đã hết 20.000 lượt ghi miễn phí trong ngày (làm mới lúc 15 giờ chiều giờ Việt Nam) hoặc mạng bị ngắt. Thay đổi CHƯA được lưu: tải lại trang (F5) để thấy dữ liệu thật';
+const errMsg = e => { const c = (e && (e.code||e.message)) || 'lỗi'; return /write-timeout|resource-exhausted/.test(c) ? WTO : c };
 function note(t, ok){ $('#banner').innerHTML = t ? `<div class="banner" ${ok?'style="background:var(--blue-soft)"':''}>${esc(t)}</div>` : '' }
 function flash(t){ note(t, 1); setTimeout(()=>note(''), 3500) }
 async function safe(fn, msg){ try { return await fn() } catch(e) { console.error(e); note((msg||'Không thực hiện được')+' ('+errMsg(e)+').'); return false } }
@@ -751,7 +755,7 @@ async function saveAssign(f){
     await batchChunks(ps); return true }, 'Không lưu được bài giao');
   if (ok) { S.editAsg = null; S.sel.clear(); flash('Đã giao bài "' + body.title + '".'); render() } }
 async function batchChunks(ops, prog){ let cur = [], size = 0, done = 0;
-  const commit = async b => { for (let i = 0; ; i++) { try { await S.B.batch(b); return } catch(e) { const c = (e && e.code) || ''; if (i >= 3 || /resource-exhausted|permission|invalid/.test(c)) throw e; await new Promise(r => setTimeout(r, 1500 * (i + 1))) } } };
+  const commit = async b => { for (let i = 0; ; i++) { try { await S.B.batch(b); return } catch(e) { const c = (e && e.code) || ''; if (i >= 3 || /resource-exhausted|permission|invalid|write-timeout/.test(c)) throw e; await new Promise(r => setTimeout(r, 1500 * (i + 1))) } } };
   for (const o of ops) { const sz = o.d ? new Blob([JSON.stringify(o.d)]).size : 100; if (cur.length && (cur.length >= 100 || size + sz > 1.5e6)) { await commit(cur); done += cur.length; prog && await prog(done); cur = []; size = 0 } cur.push(o); size += sz }
   if (cur.length) { await commit(cur); done += cur.length; prog && await prog(done) } }
 
@@ -848,8 +852,8 @@ async function importData(file){
   } catch(e) {
     const c = (e && e.code) || '';
     const cur = await safe(() => S.B.get(impPath(g))); const k = cur && cur.n || start;
-    st.textContent = /resource-exhausted/.test(c)
-      ? `Đã nạp ${k}/${ops.length} bài thì hết hạn mức ghi miễn phí trong ngày của Firebase. Ngày mai chọn lại file để nạp tiếp phần còn lại.`
+    st.textContent = /resource-exhausted|write-timeout/.test(c)
+      ? `Đã nạp ${k}/${ops.length} bài thì hết hạn mức ghi miễn phí trong ngày của Firebase. Sau 15 giờ chiều (giờ Việt Nam) tải lại trang rồi chọn lại file để nạp tiếp phần còn lại.`
       : `Dừng ở ${k}/${ops.length} bài (${c||e.message}). Chọn lại file để nạp tiếp từ chỗ dừng.`;
   } }
 async function checkCount(){ const el = $('#cnt'); if (!el || !S.B.count) return; el.textContent = 'Đang đếm…';
@@ -1057,7 +1061,7 @@ document.addEventListener('click', async e => {
   if (D.pedit) { openEditor(D.pedit); return }
   if (D.padd) { addEditor(D.padd, D.ptyp); return }
   if (D.pdel) { if (!t.dataset.sure) { t.dataset.sure = 1; t.textContent = 'Bấm lần nữa để xoá hẳn'; setTimeout(()=>{ if (t.isConnected) { delete t.dataset.sure; t.textContent = '🗑 Xoá bài' } }, 4000); return }
-    t.disabled = true; await deleteProblem(D.pdel); return }
+    t.disabled = true; t.textContent = 'Đang xoá…'; note('Đang xoá bài trên máy chủ…', 1); await deleteProblem(D.pdel); if (t.isConnected) { t.disabled = false; t.textContent = '🗑 Xoá bài' } return }
   if ('aidel' in D) { localStorage.removeItem(AIKEY); render(); return }
   if ('signin' in D) { safe(() => S.B.signIn(), 'Đăng nhập không thành công'); return }
   if ('signout' in D) { await S.B.signOut(); location.hash = ''; return }
