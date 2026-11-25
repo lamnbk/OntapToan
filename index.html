@@ -236,11 +236,14 @@ async function initBackend(){
   const [{initializeApp}, A, F] = await Promise.all([import(base+'firebase-app.js'), import(base+'firebase-auth.js'), import(base+'firebase-firestore.js')]);
   const app = initializeApp(FIREBASE_CONFIG); const auth = A.getAuth(app); const db = F.getFirestore(app);
   const ref = p => F.doc(db, p), col = p => F.collection(db, p);
-  // Firestore không lưu được mảng lồng mảng: bọc mảng con thành {__a:[...]} khi ghi, mở lại khi đọc
+  // Firestore giới hạn mảng lồng mảng và số chỉ mục: gói phần nội dung (mảng, đối tượng) thành chuỗi JSON 'j',
+  // chỉ giữ ở ngoài các trường đơn giản dùng cho luật bảo mật và truy vấn (basic, classId, teacherUid, status...).
   const plain = v => v && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype;
-  const enc = v => Array.isArray(v) ? v.map(x => Array.isArray(x) ? {__a: enc(x)} : enc(x)) : plain(v) ? Object.fromEntries(Object.entries(v).map(([k,x]) => [k, enc(x)])) : v;
   const dec = v => Array.isArray(v) ? v.map(dec) : plain(v) ? (Object.keys(v).length === 1 && Array.isArray(v.__a) ? dec(v.__a) : Object.fromEntries(Object.entries(v).map(([k,x]) => [k, dec(x)]))) : v;
-  const sd = s => s.exists() ? {id:s.id, ...dec(s.data())} : null;
+  const keep = v => v === null || typeof v === 'number' || typeof v === 'boolean' || (typeof v === 'string' && v.length < 1400) || (v && typeof v === 'object' && !plain(v) && !Array.isArray(v));
+  const pack = d => { const o = {}, r = {}; let n = 0; for (const [k, v] of Object.entries(d)) { if (v === undefined) continue; if (keep(v)) o[k] = v; else { r[k] = v; n++ } } if (n) o.j = JSON.stringify(r); return o };
+  const unpack = d => { if (typeof d.j === 'string') { const {j, ...o} = d; try { return {...o, ...JSON.parse(j)} } catch(e) { return o } } return dec(d) };
+  const sd = s => s.exists() ? {id:s.id, ...unpack(s.data())} : null;
   const q = (c, wh) => F.query(col(c), ...(wh||[]).map(w => F.where(...w)));
   return {
     onAuth: cb => A.onAuthStateChanged(auth, u => cb(u && {uid:u.uid, email:u.email, name:u.displayName, verified:u.emailVerified})),
@@ -248,13 +251,13 @@ async function initBackend(){
       try { await A.signInWithPopup(auth, p) } catch(e) { if (/popup/.test(e.code||'')) await A.signInWithRedirect(auth, p); else throw e } },
     signOut: () => A.signOut(auth),
     get: async p => sd(await F.getDoc(ref(p))),
-    set: (p, d, merge) => F.setDoc(ref(p), enc(d), merge ? {merge:true} : {}),
-    update: (p, d) => F.updateDoc(ref(p), enc(d)),
+    set: (p, d, merge) => F.setDoc(ref(p), pack(d), merge ? {merge:true} : {}),
+    update: (p, d) => F.updateDoc(ref(p), pack(d)),
     del: p => F.deleteDoc(ref(p)),
     list: async (c, wh) => (await F.getDocs(q(c, wh))).docs.map(sd),
     watch: (p, cb, err) => F.onSnapshot(ref(p), s => cb(sd(s)), err || (()=>{})),
     watchQ: (c, wh, cb, err) => F.onSnapshot(q(c, wh), s => cb(s.docs.map(sd)), err || (()=>{})),
-    batch: async ops => { const b = F.writeBatch(db); ops.forEach(o => o.del ? b.delete(ref(o.p)) : b.set(ref(o.p), enc(o.d), o.merge ? {merge:true} : {})); await b.commit() },
+    batch: async ops => { const b = F.writeBatch(db); ops.forEach(o => o.del ? b.delete(ref(o.p)) : b.set(ref(o.p), pack(o.d), o.merge ? {merge:true} : {})); await b.commit() },
     ts: d => d ? F.Timestamp.fromDate(d) : null, now: () => F.serverTimestamp(),
   };
 }
@@ -549,7 +552,7 @@ async function saveAssign(f){
     await batchChunks(ps); return true }, 'Không lưu được bài giao');
   if (ok) { S.editAsg = null; S.sel.clear(); flash('Đã giao bài "' + body.title + '".'); render() } }
 async function batchChunks(ops, prog){ let cur = [], size = 0, done = 0;
-  for (const o of ops) { const sz = o.d ? JSON.stringify(o.d).length : 100; if (cur.length && (cur.length >= 300 || size + sz > 3.5e6)) { await S.B.batch(cur); done += cur.length; prog && prog(done); cur = []; size = 0 } cur.push(o); size += sz }
+  for (const o of ops) { const sz = o.d ? new Blob([JSON.stringify(o.d)]).size : 100; if (cur.length && (cur.length >= 100 || size + sz > 1.5e6)) { await S.B.batch(cur); done += cur.length; prog && prog(done); cur = []; size = 0 } cur.push(o); size += sz }
   if (cur.length) { await S.B.batch(cur); done += cur.length; prog && prog(done) } }
 
 /* ---------------- staff: tracking ---------------- */
