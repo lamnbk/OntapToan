@@ -344,6 +344,20 @@ table{font-size:14px}th{font-weight:600}
 .stick{position:sticky;bottom:12px;background:var(--paper);padding:10px;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin-top:16px}
 .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--blue);border-radius:50%;animation:sp 1s linear infinite;vertical-align:-2px;margin-right:6px}
 @keyframes sp{to{transform:rotate(360deg)}}
+.seg .cnt{font:500 12px/1 "Be Vietnam Pro",sans-serif;opacity:.6;margin-left:4px}
+.whole{margin-top:12px}.whole h2{font-size:17px;margin:22px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.wh{text-align:center;margin-bottom:8px}.wh h1{font-size:24px;margin:4px 0}
+.wq{margin:10px 0 14px;break-inside:avoid}.wq p{margin:4px 0}
+.wst>span>p{display:inline}
+.wopts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:4px 16px;margin:4px 0 4px 18px}
+.okk{color:#1f8a4c;font-weight:700}
+@media print{
+ .rail,.side,#banner,#tray,.noprint{display:none!important}
+ .shell{display:block}.wrap{display:block;padding:0}
+ .paper{border:0;box-shadow:none;padding:0}
+ body{background:#fff;color:#000;font-size:13pt}
+ .sol{background:#fff;border-left:2px solid #999}
+}
 
 </style>
 </head>
@@ -470,14 +484,15 @@ const dangById = (id, I = S.idx) => { for (const t of I.topics) for (const d of 
 const chById = (id, I = S.idx) => (I.tn||[]).find(c => c.id === id);
 const baiById = (id, I = S.idx) => { for (const c of (I.tn||[])) for (const b of c.bais) if (b.id === id) return b };
 const idxOfM = m => S.idxs[m.g] || S.idx;
-const dangOf = m => { const I = idxOfM(m); return m.k === 'tn' ? baiById(m.bai, I).dangs.find(d => d.id === m.d) : dangById(m.d, I) };
+const dangOf = m => { const I = idxOfM(m); if (m.k === 'doc') return docById(m.t, I).secs.find(s => s.id === m.d); return m.k === 'tn' ? baiById(m.bai, I).dangs.find(d => d.id === m.d) : dangById(m.d, I) };
 const shortOf = (t, I) => SHORT[t.id] || t.short || ('CĐ ' + (I.topics.indexOf(t)+1));
 function label(pid){ const m = S.P[pid]; if (!m) return pid; const I = idxOfM(m), d = dangOf(m); const same = d.items.filter(x => x[1] === m.y); const k = same.findIndex(x=>x[0]===pid)+1;
   const gl = m.g !== S.grade ? `L${m.g} · ` : '';
+  if (m.k === 'doc') { const D = docById(m.t, I); return `${gl}${D.title} · Câu ${docItems(D).findIndex(x => x[0] === pid) + 1}` }
   if (m.k === 'tn') { const b = baiById(m.bai, I), c = chById(m.t, I); return `${gl}C${I.tn.indexOf(c)+1} · Bài ${b.no} · D${b.dangs.indexOf(d)+1} · ${TYPES[m.y]} ${k}` }
   const t = topicById(m.t, I); return `${gl}${shortOf(t, I)} · D${t.dangs.indexOf(d)+1} · TL ${k}` }
 function setGrade(g){ g = +g; if (!GRADES.includes(g)) return; S.grade = g; S.idx = S.idxs[g] || null;
-  S.topic = S.dang = S.ch = S.bai = S.pid = null; S.ed = S.sf = S.imp = null; try { localStorage.setItem('ot_grade', g) } catch(e) {} render(); scrollTo(0,0) }
+  S.topic = S.dang = S.ch = S.bai = S.pid = S.doc = null; S.dall = false; S.ed = S.sf = S.imp = null; try { localStorage.setItem('ot_grade', g) } catch(e) {} render(); scrollTo(0,0) }
 const hasData = g => !!(S.idxs[g] && (S.idxs[g].topics||[]).length + (S.idxs[g].tn||[]).length);
 const stat = (prog, pid) => prog && prog.done && prog.done[pid] ? prog.done[pid].s : 0;
 const myAsgs = () => S.asg.filter(a => role()==='student' ? a.classId === S.me.classId : true);
@@ -485,11 +500,12 @@ function canSee(pid){ if (isStaff() || isFull()) return true; const m = S.P[pid]
 
 /* ---------------- navigation ---------------- */
 function tabsFor(){ const r = role();
-  if (r === 'admin') return [['kho','Tự luận'],['khotn','Trắc nghiệm'],['lop','Lớp học'],['giao','Giao bài'],['theodoi','Theo dõi'],['nguoidung','Người dùng'],['quantri','Gói & dữ liệu']];
-  if (r === 'teacher') return [['kho','Tự luận'],['khotn','Trắc nghiệm'],['lop','Lớp & học sinh'],['giao','Giao bài'],['theodoi','Theo dõi']];
-  return [['baigiao','Bài được giao'],['ontap','Tự luận'],['tracnghiem','Trắc nghiệm'],['ketqua','Kết quả']] }
+  const ex = [['decuong','Đề cương ôn tập'],['dekt','Đề kiểm tra'], ...(S.grade === 9 ? [['vao10','Thi vào 10']] : [])];
+  if (r === 'admin') return [['kho','Tự luận'],['khotn','Trắc nghiệm'],...ex,['lop','Lớp học'],['giao','Giao bài'],['theodoi','Theo dõi'],['nguoidung','Người dùng'],['quantri','Gói & dữ liệu']];
+  if (r === 'teacher') return [['kho','Tự luận'],['khotn','Trắc nghiệm'],...ex,['lop','Lớp & học sinh'],['giao','Giao bài'],['theodoi','Theo dõi']];
+  return [['baigiao','Bài được giao'],['ontap','Tự luận'],['tracnghiem','Trắc nghiệm'],...ex,['ketqua','Kết quả']] }
 const curView = () => { const ok = tabsFor().map(t=>t[0]); const h = location.hash.slice(1); return ok.includes(h) ? h : ok[0] };
-function go(v){ S.pid=null; S.asgId=null; S.ed=null; S.sf=null; S.imp=null; if (location.hash.slice(1) !== v) location.hash = v; else render() }
+function go(v){ S.pid=null; S.asgId=null; S.doc=null; S.dall=false; S.ed=null; S.sf=null; S.imp=null; if (location.hash.slice(1) !== v) location.hash = v; else render() }
 window.addEventListener('hashchange', () => render());
 const wrap1 = (h, w) => `<div class="wrap" style="grid-template-columns:minmax(0,1fr);max-width:${w||1100}px">${h}</div>`;
 const LOGO = '<svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#F2C14E"/><path d="M6.5 17.5h3.2l3.6 7.5 6.2-16.5h6" fill="none" stroke="#16302A" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -505,9 +521,12 @@ const IC = {
   db:'<ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
   inbox:'<path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5.5 5h13L21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6z"/>',
   award:'<circle cx="12" cy="9" r="6"/><path d="m8.5 14-1.5 8 5-3 5 3-1.5-8"/>',
+  list:'<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.3"/><circle cx="4.5" cy="12" r="1.3"/><circle cx="4.5" cy="18" r="1.3"/>',
+  paper:'<path d="M6 2.5h8.5L19 7v14.5H6z"/><path d="M14 2.5V7h5M9 12h7M9 16h7"/>',
+  cap:'<path d="m2 9 10-5 10 5-10 5z"/><path d="M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5M22 9v6"/>',
   out:'<path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l-5-5 5-5M5 12h11"/>'};
 const icon = k => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${IC[k]}</svg>`;
-const TABIC = {kho:'book', ontap:'book', khotn:'check', tracnghiem:'check', lop:'users', giao:'send', theodoi:'chart', nguoidung:'user', quantri:'db', baigiao:'inbox', ketqua:'award'};
+const TABIC = {decuong:'list', dekt:'paper', vao10:'cap', kho:'book', ontap:'book', khotn:'check', tracnghiem:'check', lop:'users', giao:'send', theodoi:'chart', nguoidung:'user', quantri:'db', baigiao:'inbox', ketqua:'award'};
 function renderTop(){
   const v = curView(), r = role();
   document.body.classList.toggle('guest', !r);
@@ -525,10 +544,10 @@ function render(){
   if (S.me.status === 'pending') return renderPending();
   if (S.me.status === 'blocked') return renderBlocked();
   const v = curView();
-  if (!S.idx && ['kho','ontap','khotn','tracnghiem','ketqua','theodoi'].includes(v)) { $('#app').innerHTML = wrap1(`<div class="paper empty-state"><div class="bignum">${S.grade}</div><h1>Lớp ${S.grade} chưa có bài</h1>
+  if (!S.idx && ['kho','ontap','khotn','tracnghiem','ketqua','theodoi','decuong','dekt','vao10'].includes(v)) { $('#app').innerHTML = wrap1(`<div class="paper empty-state"><div class="bignum">${S.grade}</div><h1>Lớp ${S.grade} chưa có bài</h1>
     <p>${role()==='admin' ? `Nạp file dữ liệu lớp ${S.grade} trong mục <b>Gói & dữ liệu</b>, hoặc chọn lớp khác ở cột bên trái.` : 'Dữ liệu lớp này đang được chuẩn bị. Chọn lớp khác ở cột bên trái.'}</p>
     ${role()==='admin' ? '<button class="btn pri" data-go="quantri">Mở Gói & dữ liệu</button>' : ''}</div>`, 760); renderTray(); return }
-  ({kho:renderLearn, ontap:renderLearn, khotn:renderTN, tracnghiem:renderTN, lop:renderClasses, giao:renderAssign, theodoi:renderTrack, nguoidung:renderUsers, quantri:renderAdmin, baigiao:renderMyAsg, ketqua:renderResults})[v]();
+  ({decuong:renderDocs, dekt:renderDocs, vao10:renderDocs, kho:renderLearn, ontap:renderLearn, khotn:renderTN, tracnghiem:renderTN, lop:renderClasses, giao:renderAssign, theodoi:renderTrack, nguoidung:renderUsers, quantri:renderAdmin, baigiao:renderMyAsg, ketqua:renderResults})[v]();
   renderTray();
 }
 
@@ -596,7 +615,7 @@ function dangHTML(T, d){
   return `<div class="paper">${th}<h2>Bài tập (${list.length})</h2>${tools}<div class="chips">${chips}</div></div>`;
 }
 function seqOf(){ if (S.asgId){ const a = S.asg.find(x=>x.id===S.asgId); return a ? a.pids : [] }
-  const m = S.P[S.pid]; return dangOf(m).items.filter(x=>x[1]===m.y).map(x=>x[0]) }
+  const m = S.P[S.pid]; if (m.k === 'doc') return docItems(docById(m.t, idxOfM(m))).map(x=>x[0]); return dangOf(m).items.filter(x=>x[1]===m.y).map(x=>x[0]) }
 const probShell = () => `<div class="paper" id="prob"><p class="empty">Đang tải bài…</p></div>`;
 async function getProb(pid){
   const key = (S.asgId||'') + '/' + pid; if (S.cache[key]) return S.cache[key];
@@ -609,6 +628,7 @@ async function loadProb(){
   const a = S.asgId ? S.asg.find(x=>x.id===S.asgId) : null;
   const m = S.P[pid];
   const back = a ? `<button class="btn sm" data-back-asg>← ${esc(a.title)}</button>`
+    : m.k === 'doc' ? `<button class="btn sm" data-back>← ${esc(docById(m.t).title)}</button>`
     : m.k === 'tn' ? `<button class="btn sm" data-back>← Bài ${baiById(m.bai).no}</button>`
     : `<button class="btn sm" data-back>← Dạng ${topicById(m.t).dangs.findIndex(x=>x.id===m.d)+1}</button>`;
   const nav = `<div class="row sp" style="margin-top:18px"><button class="btn" data-nav="-1" ${k<=0?'disabled':''}>← Trước</button><button class="btn pri" data-nav="1" ${k>=seq.length-1?'disabled':''}>Tiếp →</button></div>`;
@@ -839,7 +859,7 @@ function renderAdmin(){
    <div class="row" style="margin-top:8px"><button type="button" class="btn sm" data-count>Kiểm tra số bài trên máy chủ</button><span id="cnt" class="hint"></span></div><div id="impst" class="hint" style="margin-top:8px"></div></div>
    ${aiCard()}
    <div class="card"><h3>Admin</h3><p>${ADMIN_EMAILS.map(esc).join(', ')}</p><p class="hint">Danh sách Admin đặt trong file index.html và firestore.rules.</p></div></div>`, 1000) }
-function allDangs(idx){ const L = []; idx.topics.forEach(t=>t.dangs.forEach(d=>L.push(d))); (idx.tn||[]).forEach(c=>c.bais.forEach(b=>b.dangs.forEach(d=>L.push(d)))); return L }
+function allDangs(idx){ const L = []; (idx.topics||[]).forEach(t=>t.dangs.forEach(d=>L.push(d))); (idx.tn||[]).forEach(c=>c.bais.forEach(b=>b.dangs.forEach(d=>L.push(d)))); (idx.docs||[]).forEach(D=>D.secs.forEach(sc=>L.push(sc))); return L }
 function flagIndex(idx, n){ for (const d of allDangs(idx)) { const c = {}; for (const it of d.items) { c[it[1]] = c[it[1]] || 0; it[2] = c[it[1]] < n ? 1 : 0; c[it[1]]++ } } }
 async function importData(file){
   const st = $('#impst'); st.textContent = 'Đang đọc file…';
@@ -939,6 +959,7 @@ function addEditor(did, y){
   const d = anyDang(did); let t = null, bai = null, k = 'tl';
   for (const T of (S.idx.topics||[])) if (T.dangs.includes(d)) t = T.id;
   for (const C of (S.idx.tn||[])) for (const B of C.bais) if (B.dangs.includes(d)) { k = 'tn'; t = C.id; bai = B.id }
+  for (const D of (S.idx.docs||[])) if (D.secs.includes(d)) { k = 'doc'; t = D.id }
   S.ed = newEd({pid:null, k, t, bai, d:did, y}); S.pid = null; render(); scrollTo(0,0) }
 
 const edField = (name, label, rows, help) => { const E = S.ed;
@@ -948,7 +969,7 @@ function pvHTML(name){ const E = S.ed, v = E.f[name] || ''; if (!v.trim()) retur
   return /^(o|i)\d$|^tans$/.test(name) ? `<p>${M(t1(v, E))}</p>` : paras(t2p(v, E)) }
 function edDraw(){
   const E = S.ed, d = anyDang(E.d), y = E.y;
-  const where = E.k === 'tn' ? `${esc(baiById(E.bai).name)} · ${M(esc(d.name))}` : `${esc(topicById(E.t).name)} · ${M(d.name)}`;
+  const where = E.k === 'doc' ? `${esc(docById(E.t).title)} · ${M(esc(d.name))}` : E.k === 'tn' ? `${esc(baiById(E.bai).name)} · ${M(esc(d.name))}` : `${esc(topicById(E.t).name)} · ${M(d.name)}`;
   let extra = '';
   if (y === 'mc') extra = ['A','B','C','D'].map((k,i) => edField('o'+i, 'Phương án ' + k, 2)).join('') +
     `<div class="edf"><b>Đáp án đúng</b><div class="seg" role="group">${['A','B','C','D'].map(k => `<button type="button" data-edkey="${k}" aria-pressed="${E.ans===k}">${k}</button>`).join('')}</div></div>`;
@@ -957,7 +978,7 @@ function edDraw(){
   const ocrAll = aiOn() ? `<div class="card edall"><b>Dán ảnh cả câu để tự điền</b><p class="hint">Chụp màn hình cả câu (đề${y==='tl'?'':', phương án'}, lời giải nếu có), bấm vào ô dưới rồi Ctrl+V. AI sẽ điền vào các ô, bạn kiểm tra lại trước khi lưu.</p><textarea id="edall" rows="2" placeholder="Bấm vào đây rồi Ctrl+V ảnh cả câu…"></textarea><div class="row" style="margin-top:6px"><button type="button" class="btn sm" data-edocr="*">Hoặc chọn ảnh từ máy</button></div></div>`
     : `<p class="hint">Muốn dán ảnh tự chuyển thành chữ và công thức: vào <b>Gói & dữ liệu → Nhận dạng ảnh (AI)</b> để nhập khoá AI.</p>`;
   const paste = `<div class="row"><span class="hint">Khi dán ảnh (Ctrl+V) vào một ô:</span><div class="seg" role="group" style="margin:0"><button type="button" data-edpm="img" aria-pressed="${!(E.pm==='ocr')}">Chèn làm hình</button><button type="button" data-edpm="ocr" aria-pressed="${E.pm==='ocr'}" ${aiOn()?'':'disabled title="Cần khoá AI"'}>Chuyển thành chữ (AI)</button></div></div>`;
-  const lv = E.k === 'tn' ? `<div class="row"><label for="edlv"><b>Mức độ</b></label><select id="edlv" style="width:auto">${Object.entries(LVN).map(([k,v]) => `<option value="${k}" ${E.lv===k?'selected':''}>${v}</option>`).join('')}</select></div>` : '';
+  const lv = E.k === 'tn' || (E.k === 'doc' && isTN(y)) ? `<div class="row"><label for="edlv"><b>Mức độ</b></label><select id="edlv" style="width:auto">${Object.entries(LVN).map(([k,v]) => `<option value="${k}" ${E.lv===k?'selected':''}>${v}</option>`).join('')}</select></div>` : '';
   const box = $('#edbox'); if (!box) return;
   box.innerHTML = `<div class="row sp"><button class="btn sm" data-edcancel>← Huỷ, không lưu</button><span class="src">${where}</span></div>
    <h1 style="margin-top:14px">${E.pid ? 'Sửa ' + label(E.pid) : 'Thêm ' + (E.k==='tn'?'câu ':'bài ') + TYPEN[y].toLowerCase()}<span class="tag ${isTN(y)?'tn':''}">${TYPEN[y]}</span></h1>
@@ -1027,14 +1048,15 @@ async function saveEditor(){
   const doc = {t:E.t, d:E.d, y, src:E.src.trim(), st:t2p(E.f.st, E), so:t2p(E.f.so, E)};
   if (!doc.st.length) { note('Đề bài đang trống.'); return }
   if (E.k === 'tn') { doc.bai = E.bai; doc.lv = E.lv }
+  if (E.k === 'doc') { doc.doc = E.t; if (isTN(y)) doc.lv = E.lv }
   if (y === 'mc') { doc.opts = ['A','B','C','D'].map((k,i) => ({k, h:t1(E.f['o'+i]||'', E)})); if (doc.opts.some(o => !o.h)) { note('Cần nhập đủ 4 phương án.'); return } doc.ans = E.ans || '' }
   if (y === 'ds') { doc.items = ['a','b','c','d'].map((k,i) => ({k, h:t1(E.f['i'+i]||'', E)})); if (doc.items.some(o => !o.h)) { note('Cần nhập đủ 4 ý.'); return } doc.ans = E.dsk.every(v=>v) ? E.dsk.join('') : '' }
   if (y === 'tln') { const v = (E.f.tans||'').trim(); doc.ans = v ? (/\$|\\\(/.test(v) ? t1(v, E) : '\\(' + mEsc(v) + '\\)') : '' }
   const size = new Blob([JSON.stringify(doc)]).size; if (size > 900000) { note(`Bài quá nặng (${Math.round(size/1024)} KB, tối đa khoảng 900 KB). Bớt hoặc thu nhỏ hình.`); return }
   const idx = cloneIdx(), d = findDang(idx, E.d); let pid = E.pid, it;
   if (pid) it = d.items.find(x => x[0] === pid);
-  else { pid = E.d + 'n' + Date.now().toString(36); it = E.k === 'tn' ? [pid, y, 0, E.lv] : [pid, y, 0]; d.items.push(it) }
-  if (E.k === 'tn') it[3] = E.lv;
+  else { pid = E.d + 'n' + Date.now().toString(36); it = E.k !== 'tl' ? [pid, y, 0, E.lv] : [pid, y, 0]; d.items.push(it) }
+  if (E.k !== 'tl') it[3] = E.lv;
   reflag(d, S.cfg.basicN); doc.basic = !!it[2];
   if (st) st.textContent = 'Đang lưu…';
   const ok = await safe(async () => {
@@ -1043,7 +1065,7 @@ async function saveEditor(){
     await batchChunks(ops); await S.B.set(idxPath(gOfEd()), idx); return true }, 'Không lưu được bài');
   if (!ok) { if (st) st.textContent = ''; return }
   Object.keys(S.cache).filter(k => k.endsWith('/'+pid)).forEach(k => delete S.cache[k]); S.cache['/'+pid] = {id:pid, ...doc};
-  S.ed = null; S.idx = S.idxs[S.grade] = idx; S.P[pid] = E.k === 'tn' ? {g:S.grade, k:'tn', t:E.t, bai:E.bai, d:E.d, y, basic:doc.basic, lv:E.lv} : {g:S.grade, k:'tl', t:E.t, d:E.d, y, basic:doc.basic};
+  S.ed = null; S.idx = S.idxs[S.grade] = idx; S.P[pid] = E.k === 'doc' ? {g:S.grade, k:'doc', t:E.t, d:E.d, y, basic:doc.basic, lv:E.lv} : E.k === 'tn' ? {g:S.grade, k:'tn', t:E.t, bai:E.bai, d:E.d, y, basic:doc.basic, lv:E.lv} : {g:S.grade, k:'tl', t:E.t, d:E.d, y, basic:doc.basic};
   flash(E.pid ? 'Đã lưu bài.' : 'Đã thêm bài mới.'); openPid(pid) }
 async function deleteProblem(pid){
   const m = S.P[pid]; if (!m) return;
@@ -1357,10 +1379,11 @@ function splitProblems(lines){
     if (/^\*?\s*Mức\s+(độ\s+)?(nhận biết|thông hiểu|vận dụng)/i.test(plain) || /^[IVX]+\.\s*Các dạng/i.test(plain)) continue;
     if ((m = RX_PROB.exec(x))) { const no = +m[2]; let rest = x.slice(m[0].length).trim();
       if (/^(BÀI|Bài)/.test(m[1]) && rest.length > 6 && rest === rest.toUpperCase() && /\p{Lu}{3}/u.test(rest)) continue; let lv = null; const lm = /^\**\s*<\s*(NB|TH|VDC|VD)\s*>\s*\**\s*/i.exec(rest); if (lm) { lv = lm[1].toUpperCase(); rest = rest.slice(lm[0].length) }
-      if (!D) D = getD(hint === 'ds' ? 'Câu đúng/sai' : hint === 'tln' ? 'Câu trả lời ngắn' : '', '');
-      const key = part + '|' + D.nk + '|' + no, old = reg[key];
+      if (!D) D = getD(part ? part.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/[.:]\s*$/, '').trim() : hint === 'ds' ? 'Câu đúng/sai' : hint === 'tln' ? 'Câu trả lời ngắn' : '', '');
+      const nr = rest.replace(/\*\*|<[^>]*>?|\s+/g, '');
+      const key = part + '|' + D.nk + '|' + no, old = reg[key] || (nr.length > 8 && D.items.find(q => q.no === no && q.nr === nr));
       if (old) { if (old.solved) { P = null; mode = 'skip' } else { P = old; mode = 'so2'; P.so2 = [] } continue }
-      P = {no, st: [], so: [], so2: [], lv, hint, solved: false}; D.items.push(P); reg[key] = P; mode = 'st'; if (rest) P.st.push(rest); continue }
+      P = {no, nr, st: [], so: [], so2: [], lv, hint, solved: false}; D.items.push(P); reg[key] = P; mode = 'st'; if (rest) P.st.push(rest); continue }
     if (P && (m = RX_SOL.exec(x)) && !/^Giải (phương|hệ|bất|bài|các)/i.test(plain)) { mode = 'so'; P.solved = true; P.so = []; const rest = x.slice(m[0].length).trim(); if (rest) P.so.push(rest); continue }
     if (mode === 'theory') { theory.push(x); continue }
     if (mode === 'meth' && D) { if (!/^[IVX]+\.\s*Phương pháp/i.test(plain)) D.meth.push(x); continue }
@@ -1387,7 +1410,8 @@ function shapeItem(P, want){
   // đúng / sai
   const ds = [], stem = []; for (const l of P.st) { const m = /^\**\s*([a-d])\s*\)\s*\**\s*(.*)$/.exec(l); if (m && ds.length < 4 && m[1] === 'abcd'[ds.length]) ds.push(m[2]); else if (!ds.length) stem.push(l); else ds[ds.length-1] += ' ' + l }
   if (ds.length === 4 && P.hint !== 'tln' && (P.hint === 'ds' || /Đúng|Sai|\(Đ\)|\(S\)/.test(all + solT))) { it.y = 'ds'; it.f.st = stem.join('\n'); ds.forEach((v, i) => it.f['i'+i] = v.trim()); it.dsk = dsKeys(solT); return it }
-  // trả lời ngắn
+  // trả lời ngắn (đề tổng hợp: không có dấu hiệu thì là tự luận)
+  if (want === 'doc' && P.hint !== 'tln') { it.y = 'tl'; return it }
   it.y = 'tln'; const m = /(Kết quả|Đáp số|Đáp án|ĐÁP ÁN|Trả lời)\s*:?\s*\**\s*(\$[^$]+\$|-?[\d.,/]+)/.exec(P.so.join(' ')); if (m) it.f.tans = m[2].replace(/\*\*/g, '').trim();
   else if (P.so.length) { const last = P.so[P.so.length - 1].replace(/\*\*/g, ''); const mm = /\$([^$]+)\$[\s.]*$/.exec(last);
     if (mm && /^(Vậy|Do đó|Suy ra|Nên)|\blà\b|=/.test(last)) { let v = mm[1]; if (v.includes('=')) v = v.split('=').pop(); v = v.trim();
@@ -1396,8 +1420,8 @@ function shapeItem(P, want){
 
 // ---- PDF / ảnh tài liệu: nhờ AI đọc cả tệp
 const AI_DOC = (kind) => `Tệp đính kèm là tài liệu toán THCS tiếng Việt. Hãy chép lại các bài/câu trong đó thành JSON, không giải thêm, không giải thích. Trả về DUY NHẤT:
-{"dang":[{"ten":"tên dạng (nếu tài liệu chia dạng; không có thì rỗng)","bai":[{"loai":"${kind === 'tl' ? 'tl' : 'mc|ds|tln'}","de":"đề","phuong_an":["A","B","C","D"],"y":["ý a","ý b","ý c","ý d"],"dap_an":"A..D | chuỗi Đ/S 4 kí tự | kết quả | rỗng","loi_giai":"lời giải nếu có"}]}]}
-${kind === 'tl' ? 'Đây là bài tự luận: loai luôn là "tl", bỏ trống phuong_an, y, dap_an.' : 'mc = nhiều lựa chọn (có phương án A–D), ds = đúng/sai (4 ý a–d), tln = trả lời ngắn.'}
+{"dang":[{"ten":"tên dạng hoặc tên phần (nếu tài liệu chia; không có thì rỗng)","bai":[{"loai":"${kind === 'tl' ? 'tl' : kind === 'doc' ? 'tl|mc|ds|tln' : 'mc|ds|tln'}","de":"đề","phuong_an":["A","B","C","D"],"y":["ý a","ý b","ý c","ý d"],"dap_an":"A..D | chuỗi Đ/S 4 kí tự | kết quả | rỗng","loi_giai":"lời giải nếu có"}]}]}
+${kind === 'tl' ? 'Đây là bài tự luận: loai luôn là "tl", bỏ trống phuong_an, y, dap_an.' : 'mc = nhiều lựa chọn (có phương án A–D), ds = đúng/sai (4 ý a–d), tln = trả lời ngắn' + (kind === 'doc' ? ', tl = tự luận. Đề có nhiều phần (Trắc nghiệm, Tự luận…): mỗi phần là một mục trong "dang", ten là tên phần.' : '.')}
 Quy tắc trong mỗi chuỗi: xuống dòng bằng \\n giữa các đoạn; mọi công thức viết LaTeX trong $...$ (nhân đôi dấu \\ cho đúng JSON); chữ đậm **...**; chỗ có hình vẽ ghi [HÌNH]. Phương án không kèm chữ "A." đầu dòng. Lời giải ghép đúng vào bài của nó. Chép đủ tất cả các bài.`;
 async function aiReadDoc(file, kind){
   const c = aiCfg(); if (!c.key) throw new Error('file PDF cần khoá AI để đọc (vào Gói & dữ liệu → Nhận dạng ảnh (AI))');
@@ -1413,7 +1437,7 @@ async function aiReadDoc(file, kind){
   txt = txt.replace(/^\s*```[a-z]*\s*|\s*```\s*$/g, ''); const a = txt.indexOf('{'), b = txt.lastIndexOf('}');
   let J; try { J = JSON.parse(txt.slice(a, b + 1)) } catch(e) { throw new Error('AI trả về dữ liệu không đọc được (tệp có thể quá dài; thử chia nhỏ tệp)') }
   const s = v => String(v ?? '').trim();
-  return (J.dang || []).map(d => ({name: s(d.ten), items: (d.bai || []).map(p => { const y = kind === 'tl' ? 'tl' : (['mc','ds','tln'].includes(p.loai) ? p.loai : 'tln');
+  return (J.dang || []).map(d => ({name: s(d.ten), items: (d.bai || []).map(p => { const y = kind === 'tl' ? 'tl' : (['mc','ds','tln'].includes(p.loai) ? p.loai : kind === 'doc' ? 'tl' : 'tln');
     const it = {y, f:{st: s(p.de), so: s(p.loi_giai)}, ans:'', dsk:['','','',''], inc:true};
     if (y === 'mc') { (p.phuong_an || []).slice(0,4).forEach((v, i) => it.f['o'+i] = s(v).replace(/^\*{0,2}[A-D][.):]\*{0,2}\s*/, '')); if (/^[A-D]$/i.test(s(p.dap_an))) it.ans = s(p.dap_an).toUpperCase() }
     if (y === 'ds') { (p.y || []).slice(0,4).forEach((v, i) => it.f['i'+i] = s(v).replace(/^\*{0,2}[a-d][.)]\*{0,2}\s*/, '')); const k = s(p.dap_an).toUpperCase().replace(/D/g, 'Đ'); if (/^[ĐS]{4}$/.test(k)) it.dsk = [...k] }
@@ -1432,7 +1456,7 @@ async function readAnyFile(file, kind, E, prog){
   else throw new Error('chỉ nhận file .docx, .pdf, .tex, .txt hoặc ảnh');
   const R = splitProblems(lines); let D = R.dangs;
   if (!D.length) { const t = lines.filter(Boolean); if (t.length) D = [{name:'', meth:[], items:[{st: t, so: []}]}]; note += ' Không thấy "Bài 1." / "Câu 1." nên gộp cả tệp thành một bài.' }
-  return {dangs: D.map(d => ({name: d.name, meth: d.meth || [], items: d.items.map(p => shapeItem(p, kind === 'tl' ? 'tl' : 'any'))})), theory: R.theory, note} }
+  return {dangs: D.map(d => ({name: d.name, meth: d.meth || [], items: d.items.map(p => shapeItem(p, kind === 'tl' ? 'tl' : kind === 'doc' ? 'doc' : 'any'))})), theory: R.theory, note} }
 
 /* ---------------- cấu trúc: chủ đề / dạng / chương / bài học (Admin) ---------------- */
 const busy = () => S.ed || S.sf || S.imp;
@@ -1457,9 +1481,14 @@ function openForm(kind, mode, ref){ const E = {imgs:{}, ni:0}; const I = S.idx; 
   if (kind === 'bai' && mode === 'new') { const C = chById(ref); const no = Math.max(0, ...(I.tn||[]).flatMap(c => c.bais.map(b => +b.no || 0))) + 1; f = {name:`Bài ${no}. `, no, dangs:'', theory:''} }
   if (kind === 'bai' && mode === 'edit') { const B = baiById(ref); f = {name:B.name, no:B.no, theory:'…'} }
   if (kind === 'tdang') f = mode === 'edit' ? {name: anyDang(ref).name, meth:'…'} : {name:'', meth:''};
+  if (kind === 'doc' && mode === 'new') { const dk = ref; f = {dk, name:'', ky: S.ky || 'gk1', time: dk === 'decuong' ? '' : dk === 'vao10' ? '120' : '90', year: String(new Date().getFullYear()), place:'', note:'',
+    secs: dk === 'decuong' ? 'A. Lí thuyết cần nhớ\nB. Bài tập trắc nghiệm\nC. Bài tập tự luận' : 'Phần I. Trắc nghiệm\nPhần II. Tự luận'} }
+  if (kind === 'doc' && mode === 'edit') { const D = docById(ref); f = {dk: D.kind, name: D.title, ky: D.ky || 'gk1', time: D.time ? String(D.time) : '', year: D.year ? String(D.year) : '', place: D.place || '', note: D.note || ''} }
+  if (kind === 'sec') f = mode === 'edit' ? {name: anyDang(ref).name} : {name: 'Phần ' + (docById(ref).secs.length + 1) + '. '};
   S.sf = {kind, mode, ref, f, E}; S.pid = null; S.ed = null; S.imp = null; render(); scrollTo(0,0);
   if (kind === 'bai' && mode === 'edit') tnthOf(ref).then(t => { if (S.sf && S.sf.ref === ref) { S.sf.f.theory = p2t(t.theory, E); sfDraw() } });
   if (kind === 'tdang' && mode === 'edit') { const bid = (I.tn||[]).flatMap(c => c.bais).find(b => b.dangs.some(x => x.id === ref)).id; tnthOf(bid).then(t => { if (S.sf && S.sf.ref === ref) { S.sf.f.meth = p2t((t.methods||{})[ref], E); sfDraw() } }) } }
+const fSel = (k, lab, opts) => `<div class="edf"><label for="sf_${k}"><b>${lab}</b></label><select id="sf_${k}" data-sfsel="${k}" style="width:auto">${opts.map(([v, t]) => `<option value="${v}" ${S.sf.f[k]===v?'selected':''}>${t}</option>`).join('')}</select></div>`;
 const fIn = (k, lab, help, rows) => { const v = S.sf.f[k] ?? ''; return `<div class="edf"><label for="sf_${k}"><b>${lab}</b></label>${help?`<p class="hint">${help}</p>`:''}${rows ? `<textarea id="sf_${k}" data-sf="${k}" rows="${rows}" spellcheck="false">${esc(v)}</textarea>` : `<input type="text" id="sf_${k}" data-sf="${k}" value="${esc(v)}">`}</div>` };
 const fileBox = (lab) => `<div class="card dropf"><b>${lab}</b><p class="hint">Chọn file <b>.docx</b> (đọc được cả công thức MathType và hình vẽ), <b>.pdf</b> hoặc ảnh (cần khoá AI), hoặc <b>.tex / .txt</b>. Trong file, mỗi bài bắt đầu bằng "Bài 1." / "Câu 1.", lời giải bắt đầu bằng "Lời giải" hoặc "Giải"; dòng "Dạng 1. …" sẽ tách thành dạng.</p>
   <div class="row"><input type="file" id="sffile" accept=".docx,.doc,.pdf,.tex,.txt,image/*"><span id="sfname" class="hint">${S.sf && S.sf.file ? esc(S.sf.file.name) : ''}</span></div></div>`;
@@ -1479,14 +1508,29 @@ function sfDraw(){ const F = S.sf, box = $('#edbox'); if (!F || !box) return; le
     if (ed) del = `<button class="btn red" data-sfdel>🗑 Xoá bài học và toàn bộ câu hỏi</button>` }
   if (K === 'tdang') { title = ed ? 'Sửa dạng' : 'Thêm dạng'; body = fIn('name', 'Tên dạng') + fIn('meth', 'Phương pháp giải', 'Mỗi dòng một đoạn, công thức $...$', 5);
     if (ed) del = `<button class="btn red" data-sfdel>🗑 Xoá dạng và toàn bộ câu hỏi</button>` }
+  if (K === 'doc') { const dk = F.f.dk, Kd = DOCK[dk]; title = (ed ? 'Sửa ' : 'Thêm ') + Kd.one;
+    body = fIn('name', 'Tên ' + Kd.one, dk === 'vao10' ? 'Ví dụ: Đề thi vào 10 môn Toán – Hà Nội 2025' : dk === 'dekt' ? 'Ví dụ: Đề kiểm tra giữa kì I – Đề số 1' : 'Ví dụ: Đề cương ôn tập giữa kì I')
+      + (Kd.ky ? fSel('ky', 'Kì', Object.entries(KY)) : fIn('year', 'Năm') + fIn('place', 'Tỉnh / thành phố'))
+      + (dk === 'decuong' ? '' : fIn('time', 'Thời gian làm bài (phút)')) + fIn('note', 'Ghi chú', 'Không bắt buộc, ví dụ phạm vi kiến thức')
+      + (ed ? '' : fIn('secs', 'Các phần', 'Mỗi dòng một phần. Nếu nhập từ file có dòng "PHẦN I…", các phần sẽ lấy theo file.', 3) + fileBox('Nhập câu hỏi từ file (không bắt buộc)'));
+    if (ed) del = `<button class="btn red" data-sfdel>🗑 Xoá ${Kd.one} và toàn bộ câu</button>` }
+  if (K === 'sec') { title = ed ? 'Sửa phần' : 'Thêm phần'; body = fIn('name', 'Tên phần', 'Ví dụ: Phần I. Trắc nghiệm (3 điểm)'); if (ed) del = `<button class="btn red" data-sfdel>🗑 Xoá phần và các câu trong phần</button>` }
   box.innerHTML = `<div class="row sp"><button class="btn sm" data-sfcancel>← Huỷ</button><span class="src">Toán ${S.grade}</span></div><h1 style="margin-top:14px">${title}</h1>${body}
     <div class="row" style="margin-top:18px"><button class="btn pri" data-sfsave>${F.file ? 'Đọc file và xem trước →' : '💾 Lưu'}</button><button class="btn" data-sfcancel>Huỷ</button>${del}<span id="sfst" class="hint"></span></div>` }
 async function sfSave(){ const F = S.sf, f = F.f, E = F.E, st = $('#sfst'), K = F.kind; if (!(f.name||'').trim()) { note('Cần nhập tên.'); return }
+  if (K === 'doc' && !f.dk) return;
   const idx = cloneIdx(); idx.topics = idx.topics || []; idx.tn = idx.tn || [];
   const dangLines = s => String(s||'').split('\n').map(x => x.replace(/^\s*(Dạng|DẠNG)\s*\d+\s*[.:]\s*/, '').trim()).filter(Boolean);
   const mkD = (pre, name) => ({id: uid36(pre + '_'), name: t1(name, E), sign:'', steps:[], know:[], warn:[], items:[]});
   const mkTD = (pre, name) => ({id: uid36(pre + 'd'), name: name, items:[]});
   let go2 = null;
+  if (K === 'doc') { idx.docs = idx.docs || []; const meta = {title: f.name.trim(), kind: f.dk, ...(DOCK[f.dk].ky ? {ky: f.ky} : {year: +f.year || null, place: f.place.trim()}), time: +f.time || null, note: f.note.trim()};
+    if (F.mode === 'edit') { const D = idx.docs.find(d => d.id === F.ref); Object.assign(D, meta); go2 = () => { S.doc = D.id; if (D.ky) S.ky = D.ky } }
+    else { const Dc = {id: uid36('d'), ...meta, secs: []}; String(f.secs||'').split('\n').map(x => x.trim()).filter(Boolean).forEach(n => Dc.secs.push({id: uid36(Dc.id + 's'), name: n, items: []}));
+      if (F.file) { S.sf = null; return startImport(F.file, {mode:'docnew', Dc, idx}) }
+      if (!Dc.secs.length) Dc.secs.push({id: uid36(Dc.id + 's'), name: 'Phần 1', items: []}); idx.docs.push(Dc); go2 = () => { S.doc = Dc.id; if (Dc.ky) S.ky = Dc.ky } } }
+  if (K === 'sec') { const D = (idx.docs||[]).find(d => F.mode === 'edit' ? d.secs.some(x => x.id === F.ref) : d.id === F.ref);
+    if (F.mode === 'edit') D.secs.find(x => x.id === F.ref).name = f.name.trim(); else D.secs.push({id: uid36(D.id + 's'), name: f.name.trim(), items: []}); go2 = () => { S.doc = D.id } }
   if (K === 'topic') { if (F.mode === 'edit') { const T = idx.topics.find(t => t.id === F.ref); T.name = f.name.trim(); T.sgk = f.sgk.trim(); T.short = f.short.trim(); go2 = () => { S.topic = T.id } }
     else { const T = {id: uid36('t'), name: f.name.trim(), sgk: f.sgk.trim(), short: f.short.trim(), dangs: []}; dangLines(f.dangs).forEach(n => T.dangs.push(mkD(T.id, n)));
       if (F.file) { S.sf = null; return startImport(F.file, {mode:'topic', T, idx}) }
@@ -1515,17 +1559,19 @@ async function sfDelete(){ const F = S.sf, idx = cloneIdx(), K = F.kind; let pid
   if (K === 'ch') { const C = idx.tn.find(c => c.id === F.ref); pids = C.bais.flatMap(b => b.dangs.flatMap(d => d.items.map(x => x[0]))); bids = C.bais.map(b => b.id); idx.tn = idx.tn.filter(c => c !== C); after = () => { S.ch = null } }
   if (K === 'bai') { const C = idx.tn.find(c => c.bais.some(b => b.id === F.ref)); const B = C.bais.find(b => b.id === F.ref); pids = B.dangs.flatMap(d => d.items.map(x => x[0])); bids = [B.id]; C.bais = C.bais.filter(b => b !== B); after = () => { S.bai = null } }
   if (K === 'tdang') { const B = idx.tn.flatMap(c => c.bais).find(b => b.dangs.some(d => d.id === F.ref)); const d = B.dangs.find(x => x.id === F.ref); pids = d.items.map(x => x[0]); B.dangs = B.dangs.filter(x => x !== d) }
+  if (K === 'doc') { const D = idx.docs.find(d => d.id === F.ref); pids = docItems(D).map(x => x[0]); idx.docs = idx.docs.filter(d => d !== D); after = () => { S.doc = null } }
+  if (K === 'sec') { const D = idx.docs.find(d => d.secs.some(x => x.id === F.ref)); const sc = D.secs.find(x => x.id === F.ref); pids = sc.items.map(x => x[0]); D.secs = D.secs.filter(x => x !== sc) }
   note(`Đang xoá ${pids.length} bài…`, 1);
   const ok = await safe(async () => { await removePids(pids); for (const b of bids) await S.B.del('tnth/'+b); await saveIdx(idx); return true }, 'Không xoá được');
   if (ok) { S.sf = null; after(); flash(`Đã xoá${pids.length ? ' cùng ' + pids.length + ' bài' : ''}.`); render() } }
 
 // ---- nhập từ file: xem trước rồi lưu
 async function startImport(file, target){
-  const kind = target.mode === 'topic' || target.kind === 'tl' ? 'tl' : 'tn';
+  const kind = target.mode === 'topic' || target.kind === 'tl' ? 'tl' : target.kind === 'doc' || target.mode === 'docnew' ? 'doc' : 'tn';
   const E = {imgs:{}, ni:0}; S.imp = {target, file:file.name, E, dangs:[], loading:'Đang đọc tệp…', note:''}; S.sf = null; render(); scrollTo(0,0);
   try { const r = await readAnyFile(file, kind, E, t => { if (S.imp) { S.imp.loading = t; impDraw() } });
-    if (!S.imp) return; const pre = target.mode === 'topic' ? target.T.dangs : target.mode === 'bai' ? target.B.dangs : [];
-    r.dangs.forEach((d, i) => { if (pre[i]) d.name = pre[i].name.replace(/<[^>]+>/g, '') }); S.imp.dangs = r.dangs; S.imp.theory = r.theory || []; S.imp.note = r.note; S.imp.loading = '';
+    if (!S.imp) return; const pre = target.mode === 'topic' ? target.T.dangs : target.mode === 'bai' ? target.B.dangs : target.mode === 'docnew' ? target.Dc.secs : [];
+    r.dangs.forEach((d, i) => { if (pre[i] && (target.mode !== 'docnew' || !d.name)) d.name = pre[i].name.replace(/<[^>]+>/g, '') }); S.imp.dangs = r.dangs; S.imp.theory = r.theory || []; S.imp.note = r.note; S.imp.loading = '';
     if (!r.dangs.length) S.imp.err = 'Không tìm thấy bài nào trong tệp.' }
   catch(e) { console.error(e); if (S.imp) { S.imp.loading = ''; S.imp.err = 'Không đọc được tệp: ' + (e.message || e) } }
   impDraw() }
@@ -1535,12 +1581,13 @@ function impItemHTML(it, di, ii){ const E = S.imp.E, y = it.y, open = it.open;
   if (y === 'mc') extra = `<div class="opts sm">${['A','B','C','D'].map((k, i) => `<div class="opt ${it.ans===k?'ok':''}"><b>${k}</b><span>${M(t1(it.f['o'+i]||'', E))}</span></div>`).join('')}</div>${it.ans?'':'<p class="hint">Chưa thấy đáp án, sau khi lưu bấm "Sửa bài" để chọn.</p>'}`;
   if (y === 'ds') extra = `<div class="opts sm">${[0,1,2,3].map(i => `<div class="opt"><b>${'abcd'[i]}</b><span>${M(t1(it.f['i'+i]||'', E))}</span>${it.dsk[i]?`<span class="tag">${it.dsk[i]==='Đ'?'Đúng':'Sai'}</span>`:''}</div>`).join('')}</div>`;
   if (y === 'tln') extra = it.f.tans ? `<p>Đáp án: <b>${M(t1(it.f.tans, E))}</b></p>` : '<p class="hint">Chưa thấy đáp án.</p>';
-  const tsel = S.imp.target.mode === 'topic' || S.imp.target.kind === 'tl' ? '' : `<select data-impy="${di}.${ii}" style="width:auto;min-height:32px;padding:2px 8px;font-size:13px">${['mc','ds','tln'].map(t => `<option value="${t}" ${t===y?'selected':''}>${TYPEN[t]}</option>`).join('')}</select>`;
+  const isDoc = S.imp.target.kind === 'doc' || S.imp.target.mode === 'docnew';
+  const tsel = S.imp.target.mode === 'topic' || S.imp.target.kind === 'tl' ? '' : `<select data-impy="${di}.${ii}" style="width:auto;min-height:32px;padding:2px 8px;font-size:13px">${(isDoc ? ['tl','mc','ds','tln'] : ['mc','ds','tln']).map(t => `<option value="${t}" ${t===y?'selected':''}>${TYPEN[t]}</option>`).join('')}</select>`;
   return `<div class="impit ${it.inc?'':'off'}"><div class="row sp"><label class="checks" style="margin:0"><label><input type="checkbox" data-impinc="${di}.${ii}" ${it.inc?'checked':''}> Bài ${ii+1}</label></label>${tsel}<button type="button" class="btn sm" data-impopen="${di}.${ii}">${open?'Thu gọn':'Sửa'}</button></div>
     ${open ? `<label class="hint">Đề</label><textarea rows="5" data-impf="${di}.${ii}.st" spellcheck="false">${esc(it.f.st)}</textarea><label class="hint">Lời giải</label><textarea rows="5" data-impf="${di}.${ii}.so" spellcheck="false">${esc(it.f.so)}</textarea>` : ''}
     <div class="pq">${pv(it.f.st)}${extra}</div>${it.f.so ? `<details class="ex"><summary>Lời giải</summary><div class="pq">${pv(it.f.so)}</div></details>` : '<p class="hint">Không có lời giải.</p>'}</div>` }
 function impDraw(){ const I = S.imp, box = $('#edbox'); if (!I || !box) return; const T = I.target;
-  const where = T.mode === 'topic' ? `Chủ đề mới: <b>${esc(T.T.name)}</b>` : T.mode === 'bai' ? `Bài học mới: <b>${esc(T.B.name)}</b>` : `Vào dạng: <b>${M(anyDang(T.did).name)}</b>`;
+  const where = T.mode === 'docnew' ? `Đề mới: <b>${esc(T.Dc.title)}</b>` : T.mode === 'topic' ? `Chủ đề mới: <b>${esc(T.T.name)}</b>` : T.mode === 'bai' ? `Bài học mới: <b>${esc(T.B.name)}</b>` : `Vào dạng: <b>${M(anyDang(T.did).name)}</b>`;
   const n = I.dangs.reduce((u, d) => u + d.items.filter(x => x.inc).length, 0);
   const multi = T.mode !== 'dang';
   box.innerHTML = `<div class="row sp"><button class="btn sm" data-impcancel>← Huỷ</button><span class="src">${esc(I.file)}</span></div><h1 style="margin-top:14px">Xem trước khi nhập</h1><p>${where}</p>
@@ -1555,10 +1602,13 @@ function buildDoc(E, it, base){ const y = it.y, doc = {...base, y, src: base.src
   return doc }
 async function impSave(){ const I = S.imp, T = I.target, E = I.E, st = $('#impst2'); const idx = T.idx || cloneIdx(); let goto = () => {};
   const ops = []; const add = (d, it, base) => { const pid = d.id + 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); const doc = buildDoc(E, it, base);
-    const item = base.bai ? [pid, it.y, 0, it.lv || 'TH'] : [pid, it.y, 0]; d.items.push(item); if (base.bai) doc.lv = item[3]; ops.push({p:'problems/'+pid, doc, d, pid}) };
+    const item = base.bai || base.doc ? [pid, it.y, 0, it.lv || (base.bai ? 'TH' : null)] : [pid, it.y, 0]; d.items.push(item); if (item[3]) doc.lv = item[3]; ops.push({p:'problems/'+pid, doc, d, pid}) };
   const used = I.dangs.map(d => ({...d, items: d.items.filter(x => x.inc)})).filter(d => d.items.length);
-  if (T.mode === 'dang') { const d = findDang(idx, T.did); const m = S.P[d.items[0]?.[0]] || {}; const base = T.kind === 'tl' ? {t: T.t, d: d.id} : {t: T.t, bai: T.bai, d: d.id};
-    used.forEach(D => D.items.forEach(it => add(d, it, base))); goto = () => { if (T.kind === 'tl') { S.topic = T.t; S.dang = d.id } else { S.ch = T.t; S.bai = T.bai } } }
+  if (T.mode === 'dang') { const d = findDang(idx, T.did); const base = T.kind === 'tl' ? {t: T.t, d: d.id} : T.kind === 'doc' ? {t: T.t, doc: T.t, d: d.id} : {t: T.t, bai: T.bai, d: d.id};
+    used.forEach(D => D.items.forEach(it => add(d, it, base))); goto = () => { if (T.kind === 'tl') { S.topic = T.t; S.dang = d.id } else if (T.kind === 'doc') { S.doc = T.t; S.dall = false } else { S.ch = T.t; S.bai = T.bai } } }
+  if (T.mode === 'docnew') { const Dc = T.Dc; const named = Dc.secs.slice();
+    used.forEach((D, i) => { let d = named[i]; if (d && D.name) d.name = D.name; if (!d) { d = {id: uid36(Dc.id + 's'), name: D.name || ('Phần ' + (Dc.secs.length + 1)), items:[]}; Dc.secs.push(d) } D.items.forEach(it => add(d, it, {t: Dc.id, doc: Dc.id, d: d.id})) });
+    if (used.length) Dc.secs = Dc.secs.filter(sc => sc.items.length); if (!Dc.secs.length) Dc.secs.push({id: uid36(Dc.id + 's'), name: 'Phần 1', items: []}); (idx.docs = idx.docs || []).push(Dc); goto = () => { S.doc = Dc.id; S.dall = false; if (Dc.ky) S.ky = Dc.ky } }
   if (T.mode === 'topic') { const Tp = T.T; const named = Tp.dangs.slice();
     used.forEach((D, i) => { let d = named[i]; if (d && D.name) d.name = t1(D.name, E); if (!d) { d = {id: uid36(Tp.id + '_'), name: t1(D.name || ('Dạng ' + (Tp.dangs.length + 1)), E), sign:'', steps:[], know:[], warn:[], items:[]}; Tp.dangs.push(d) } D.items.forEach(it => add(d, it, {t: Tp.id, d: d.id})) });
     if (!Tp.dangs.length) Tp.dangs.push({id: uid36(Tp.id + '_'), name:'Dạng 1', sign:'', steps:[], know:[], warn:[], items:[]}); idx.topics.push(Tp); goto = () => { S.topic = Tp.id; S.dang = Tp.dangs[0].id } }
@@ -1579,6 +1629,57 @@ async function impSave(){ const I = S.imp, T = I.target, E = I.E, st = $('#impst
 function pickImport(target){ const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.docx,.doc,.pdf,.tex,.txt,image/*';
   inp.onchange = () => { if (inp.files[0]) startImport(inp.files[0], target) }; inp.click() }
 
+/* ---------------- đề cương / đề kiểm tra / đề thi vào 10 ---------------- */
+const KY = {gk1:'Giữa kì I', ck1:'Cuối kì I', gk2:'Giữa kì II', ck2:'Cuối kì II'};
+const DOCK = {decuong:{title:'Đề cương ôn tập', one:'đề cương', ky:1}, dekt:{title:'Đề kiểm tra', one:'đề kiểm tra', ky:1}, vao10:{title:'Đề thi tuyển sinh vào 10', one:'đề thi', ky:0}};
+const docById = (id, I = S.idx) => ((I && I.docs) || []).find(x => x.id === id);
+const docItems = D => D.secs.flatMap(s => s.items);
+function renderDocs(){
+  const kind = curView(), K = DOCK[kind], staff = isStaff(), adm = isAdminR();
+  if (busy() && $('#edbox')) return;
+  if (busy()) { $('#app').innerHTML = wrap1('<div class="paper" id="edbox"></div>', 1000); panelDraw(); return }
+  const all = (S.idx.docs || []).filter(d => d.kind === kind);
+  if (K.ky && !KY[S.ky]) S.ky = 'gk1';
+  const list = K.ky ? all.filter(d => d.ky === S.ky) : all.slice().sort((a, b) => (b.year || 0) - (a.year || 0));
+  const D = S.doc && all.find(d => d.id === S.doc);
+  if (!D) { S.doc = null;
+    const seg = K.ky ? `<div class="seg" role="group" aria-label="Kì">${Object.entries(KY).map(([k, v]) => `<button data-ky="${k}" aria-pressed="${S.ky===k}">${v} <span class="cnt">${all.filter(d=>d.ky===k).length}</span></button>`).join('')}</div>` : '';
+    const cards = list.map(d => { const its = docItems(d); const done = staff ? 0 : its.filter(x=>stat(S.prog,x[0])).length;
+      return `<button class="tc" data-doc="${d.id}"><span class="no">${K.ky ? KY[d.ky] : (d.year || 'Đề thi')}${d.place?' · '+esc(d.place):''}</span><b>${esc(d.title)}</b><small>${its.length} câu${d.time?` · ${d.time} phút`:''}${staff?'':' · đã làm '+done}</small>${staff?'':`<div class="meter"><i style="width:${its.length?done/its.length*100:0}%"></i></div>`}</button>` }).join('');
+    $('#app').innerHTML = wrap1(`<div class="paper"><div class="row sp"><div><div class="kick">Toán ${S.grade}</div><h1>${K.title}</h1></div>${adm?`<button class="btn pri" data-sfnew="doc" data-ref="${kind}">+ Thêm ${K.one}</button>`:''}</div>${seg}
+      <div class="topics">${cards || `<p class="empty">${K.ky ? `Chưa có ${K.one} ${KY[S.ky].toLowerCase()}.` : `Chưa có ${K.one}.`}${adm ? ' Bấm "+ Thêm" để soạn hoặc nhập từ file Word/PDF.' : ''}</p>`}</div></div>`, 1300); return }
+  const side = `<button class="back" data-alldocs>← ${K.title}</button><h3>${K.ky ? KY[D.ky] : 'Các đề'}</h3>` + list.map(d => { const n = docItems(d).length, done = docItems(d).filter(x=>stat(S.prog,x[0])).length;
+    return `<button class="dg" data-doc="${d.id}" aria-current="${d.id===D.id}">${esc(d.title)}<small>${n} câu${staff?'':' · đã làm '+done}</small></button>` }).join('');
+  const main = S.pid && !S.asgId ? probShell() : S.dall ? `<div class="paper" id="dall"><p class="empty">Đang tải cả đề…</p></div>` : docHTML(D, K);
+  $('#app').innerHTML = `<div class="wrap"><aside class="side">${side}</aside><section id="main">${main}</section></div>`;
+  if (S.pid && !S.asgId) loadProb(); else if (S.dall) loadWhole(D, K) }
+function docHTML(D, K){ const staff = isStaff(), adm = isAdminR(); let no = 0;
+  const secs = D.secs.map(sc => { const chips = sc.items.map(x => { no++; const p = x[0], s = staff ? 0 : stat(S.prog,p), lk = !canSee(p);
+      return `<button class="chip ${s?'s'+s:''} ${lk?'lock':''} ${staff&&S.sel.has(p)?'sel':''}" data-pid="${p}" title="${TYPEN[x[1]]}">${no}</button>` }).join('');
+    return `<div class="card"><div class="row sp"><h3>${M(esc(sc.name))}</h3>${adm?`<button class="mini" data-sfedit="sec" data-ref="${sc.id}">✏️ Sửa phần</button>`:''}</div>
+      ${adm?`<div class="row" style="margin:6px 0">${['tl','mc','ds','tln'].map(t => `<button class="btn sm" data-padd="${sc.id}" data-ptyp="${t}">+ ${TYPEN[t]}</button>`).join('')}<button class="btn sm" data-impdang="${sc.id}">📄 Nhập từ file</button></div>`:''}
+      <div class="chips">${chips || '<span class="hint">Chưa có câu nào.</span>'}</div></div>` }).join('');
+  const meta = [K.ky ? KY[D.ky] : D.year, D.place, D.time ? D.time + ' phút' : '', docItems(D).length + ' câu'].filter(Boolean).map(esc).join(' · ');
+  return `<div class="paper"><div class="row sp"><div class="kick">${meta}</div>${adm?`<span class="row" style="gap:6px"><button class="mini" data-sfedit="doc" data-ref="${D.id}">✏️ Sửa đề</button><button class="mini" data-sfnew="sec" data-ref="${D.id}">+ Thêm phần</button></span>`:''}</div>
+    <h1>${esc(D.title)}</h1>${D.note?`<p class="hint">${esc(D.note)}</p>`:''}
+    <div class="row" style="margin:10px 0 4px"><button class="btn pri" data-dall>📄 Xem cả đề / In</button>${staff?`<button class="btn" data-seldoc="${D.id}">Chọn cả đề để giao</button>`:''}</div>
+    ${staff?'':`<div class="legend"><span class="l1">${ST[1]}</span><span class="l2">${ST[2]}</span><span class="l3">${ST[3]}</span><span>Chưa làm</span>${isFull()?'':'<span>🔒 Gói Full</span>'}</div>`}${secs}</div>` }
+async function loadWhole(D, K){ const box = () => document.getElementById('dall'); const its = docItems(D); const out = []; let no = 0;
+  const Ps = await Promise.all(its.map(x => canSee(x[0]) ? getProb(x[0]).catch(() => null) : Promise.resolve(null)));
+  if (!box() || !S.dall || S.doc !== D.id) return;
+  let k = 0; const showSol = !!S.dsol;
+  const secs = D.secs.map(sc => `<h2>${M(esc(sc.name))}</h2>` + sc.items.map(x => { const P = Ps[k++]; no++;
+    if (!P) return `<div class="wq"><p><b>Câu ${no}.</b> <span class="hint">🔒 Câu này thuộc Gói Full.</span></p></div>`;
+    let h = `<div class="wq pq"><div class="wst"><b>Câu ${no}${P.lv?` <span class="hint">(${P.lv})</span>`:''}.</b> ${paras(P.st).replace(/^<p>/, '<span>').replace('</p>', '</span>')}</div>`;
+    if (P.y === 'mc' && P.opts) h += `<div class="wopts">${P.opts.map(o => `<div class="${showSol&&P.ans===o.k?'okk':''}"><b>${o.k}.</b> ${M(o.h)}</div>`).join('')}</div>`;
+    if (P.y === 'ds' && P.items) h += P.items.map((it, i) => `<p><b>${it.k})</b> ${M(it.h)}${showSol&&P.ans?` <b class="okk">→ ${P.ans[i]==='Đ'?'Đúng':'Sai'}</b>`:''}</p>`).join('');
+    if (P.y === 'tln' && showSol && P.ans) h += `<p><b>Đáp án:</b> ${M(P.ans)}</p>`;
+    if (showSol && P.so && P.so.length) h += `<div class="sol"><h4>Lời giải</h4>${paras(P.so)}</div>`;
+    return h + '</div>' }).join('')).join('');
+  box().innerHTML = `<div class="row sp noprint"><button class="btn sm" data-dall>← Về danh sách câu</button><span class="row" style="gap:8px"><label class="checks"><label><input type="checkbox" id="dsol" ${showSol?'checked':''}> Hiện đáp án và lời giải</label></label><button class="btn sm pri" data-print>🖨 In</button></span></div>
+    <div class="whole"><div class="wh"><div class="hint">${esc([K.ky ? KY[D.ky] : D.year, D.place].filter(Boolean).join(' · '))}</div><h1>${esc(D.title)}</h1>${D.time?`<p class="hint">Thời gian làm bài: ${D.time} phút</p>`:''}</div>${secs}</div>` }
+
+window.__T = {readDocx, blocksToLines, splitProblems, shapeItem};
 const panelDraw = () => S.ed ? edDraw() : S.sf ? sfDraw() : impDraw();
 /* ---------------- tray ---------------- */
 function renderTray(){ if (!isStaff() || !S.sel.size || curView()==='giao') { $('#tray').innerHTML = ''; return }
@@ -1586,17 +1687,23 @@ function renderTray(){ if (!isStaff() || !S.sel.size || curView()==='giao') { $(
 
 /* ---------------- events ---------------- */
 const anyDang = id => allDangs(S.idx).find(d => d.id === id);
-function openPid(pid){ const m = S.P[pid]; if (m && m.g !== S.grade) { S.grade = m.g; S.idx = S.idxs[m.g] || null } S.pid = pid; S.openSol = false; if (m) { if (m.k === 'tn') { S.ch = m.t; S.bai = m.bai; S.ttyp = m.y } else { S.topic = m.t; S.dang = m.d } } render(); scrollTo(0,0) }
+function openPid(pid){ const m = S.P[pid]; if (m && m.g !== S.grade) { S.grade = m.g; S.idx = S.idxs[m.g] || null } S.pid = pid; S.openSol = false; if (m) { if (m.k === 'doc') { S.doc = m.t; S.dall = false; const D = docById(m.t); if (D && D.ky) S.ky = D.ky } else if (m.k === 'tn') { S.ch = m.t; S.bai = m.bai; S.ttyp = m.y } else { S.topic = m.t; S.dang = m.d } } render(); scrollTo(0,0) }
 document.addEventListener('click', async e => {
   const t = e.target.closest('button'); if (!t) return; const D = t.dataset;
   if (busy() && !t.closest('#edbox') && !('signout' in D)) { if (!confirm('Bỏ phần đang soạn (chưa lưu)?')) return; S.ed = S.sf = S.imp = null }
+  if (D.ky) { S.ky = D.ky; S.doc = null; render(); return }
+  if (D.doc) { S.doc = D.doc; S.pid = null; S.dall = false; render(); scrollTo(0,0); return }
+  if ('alldocs' in D) { S.doc = null; S.pid = null; S.dall = false; render(); return }
+  if ('dall' in D) { S.dall = !S.dall; S.pid = null; render(); scrollTo(0,0); return }
+  if ('print' in D) { window.print(); return }
+  if (D.seldoc) { docItems(docById(D.seldoc)).forEach(x => S.sel.add(x[0])); render(); return }
   if (D.sfnew) { openForm(D.sfnew, 'new', D.ref); return }
   if (D.sfedit) { openForm(D.sfedit, 'edit', D.ref); return }
   if ('sfcancel' in D) { S.sf = null; render(); return }
   if ('sfsave' in D) { t.disabled = true; await sfSave(); if (t.isConnected) t.disabled = false; return }
   if ('sfdel' in D) { if (!t.dataset.sure) { t.dataset.sure = 1; t.textContent = 'Bấm lần nữa để xoá hẳn (không khôi phục được)'; return } t.disabled = true; await sfDelete(); return }
-  if (D.impdang) { const d = anyDang(D.impdang); const T = S.idx.topics.find(x => x.dangs.includes(d));
-    if (T) pickImport({mode:'dang', kind:'tl', did:d.id, t:T.id}); else { const C = S.idx.tn.find(c => c.bais.some(b => b.dangs.includes(d))); const B = C.bais.find(b => b.dangs.includes(d)); pickImport({mode:'dang', kind:'tn', did:d.id, t:C.id, bai:B.id}) } return }
+  if (D.impdang) { const d = anyDang(D.impdang); const T = S.idx.topics.find(x => x.dangs.includes(d)); const Dk = (S.idx.docs||[]).find(x => x.secs.includes(d));
+    if (Dk) pickImport({mode:'dang', kind:'doc', did:d.id, t:Dk.id}); else if (T) pickImport({mode:'dang', kind:'tl', did:d.id, t:T.id}); else { const C = S.idx.tn.find(c => c.bais.some(b => b.dangs.includes(d))); const B = C.bais.find(b => b.dangs.includes(d)); pickImport({mode:'dang', kind:'tn', did:d.id, t:C.id, bai:B.id}) } return }
   if ('impcancel' in D) { S.imp = null; render(); return }
   if ('impsave' in D) { t.disabled = true; await impSave(); if (t.isConnected) t.disabled = false; return }
   if (D.impopen) { const [a, b] = D.impopen.split('.').map(Number); const it = S.imp.dangs[a].items[b]; it.open = !it.open; impDraw(); return }
@@ -1664,6 +1771,8 @@ document.addEventListener('change', e => { const t = e.target;
   if (t.id === 'imp' && t.files[0]) importData(t.files[0]);
   if (t.id === 'edfile' && t.files[0] && S._edT) edImage(t.files[0], S._edT.name, S._edT.mode);
   if (t.id === 'edlv' && S.ed) S.ed.lv = t.value;
+  if (t.id === 'dsol') { S.dsol = t.checked; render() }
+  if (t.dataset.sfsel && S.sf) S.sf.f[t.dataset.sfsel] = t.value;
   if (t.id === 'sffile' && S.sf) { S.sf.file = t.files[0] || null; sfDraw() }
   if (t.dataset.impinc && S.imp) { const [a, b] = t.dataset.impinc.split('.').map(Number); S.imp.dangs[a].items[b].inc = t.checked; t.closest('.impit').classList.toggle('off', !t.checked); const n = S.imp.dangs.reduce((u, d) => u + d.items.filter(x => x.inc).length, 0); const sb = document.querySelector('[data-impsave]'); if (sb) sb.textContent = `💾 Lưu ${n} bài` }
   if (t.dataset.impy && S.imp) { const [a, b] = t.dataset.impy.split('.').map(Number); S.imp.dangs[a].items[b].y = t.value; impDraw() }
@@ -1703,7 +1812,8 @@ function unsub(){ S.subs.forEach(u => { try { u() } catch(e){} }); S.subs = [] }
 function rebuildP(){ S.P = {};
   for (const g of GRADES) { const d = S.idxs[g]; if (!d) continue;
     for (const t of (d.topics||[])) for (const dg of t.dangs) for (const it of dg.items) S.P[it[0]] = {g, k:'tl', t:t.id, d:dg.id, y:it[1], basic:!!it[2]};
-    for (const c of (d.tn||[])) for (const b of c.bais) for (const dg of b.dangs) for (const it of dg.items) S.P[it[0]] = {g, k:'tn', t:c.id, bai:b.id, d:dg.id, y:it[1], basic:!!it[2], lv:it[3]||null} } }
+    for (const c of (d.tn||[])) for (const b of c.bais) for (const dg of b.dangs) for (const it of dg.items) S.P[it[0]] = {g, k:'tn', t:c.id, bai:b.id, d:dg.id, y:it[1], basic:!!it[2], lv:it[3]||null};
+    for (const D of (d.docs||[])) for (const sc of D.secs) for (const it of sc.items) S.P[it[0]] = {g, k:'doc', t:D.id, kind:D.kind, d:sc.id, y:it[1], basic:!!it[2], lv:it[3]||null} } }
 function startSession(){
   unsub(); const B = S.B, uid = S.au.uid, r = role();
   GRADES.forEach(g => S.subs.push(B.watch(idxPath(g), d => { S.idxs[g] = d; rebuildP(); S.idx = S.idxs[S.grade] || null; render() })));
