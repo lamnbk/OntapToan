@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ôn tập Toán 9</title>
+<title>Ôn tập Toán THCS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 <style>
 
@@ -173,16 +173,178 @@ pre.cfg{background:var(--card);border:1.5px solid var(--line);border-radius:10px
 .opt.dsrow{flex-wrap:wrap}.opt.dsrow .seg{margin-left:auto}
 .opt.dsrow>span:not(.seg){flex:1 1 200px}
 
+.edf{margin:16px 0}
+.edf textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14.5px;line-height:1.5;resize:vertical}
+.edtool{display:flex;gap:6px;flex-wrap:wrap}
+.edpv{border:1.5px dashed var(--line);border-radius:10px;padding:8px 12px;margin-top:6px;min-height:40px;background:var(--card)}
+.edpv p{margin:4px 0}
+.edall textarea{border-style:dashed;text-align:center;cursor:pointer}
+
+/* ===== Giao diện 2: "tấm bảng lớp học" =====
+   Cột trái xanh bảng đen, chữ phấn trắng, nhấn vàng phấn; nội dung trên nền sáng, sạch.
+   Điểm nhớ: bộ chọn lớp 6·7·8·9 bằng chữ số kiểu sách toán (KaTeX_Main). */
+:root{
+--board:#16302A;--board-2:#1E3D35;--board-3:#28504A;--chalk:#F2C14E;--chalk-ink:#E9F0EC;--chalk-mut:#9DB8AE;
+--bg:light-dark(#F2F4F1,#0D1412);--paper:light-dark(#FFFFFF,#141D1A);--grid:transparent;
+--ink:light-dark(#15211D,#E4ECE8);--mut:light-dark(#5D6B66,#93A59E);
+--blue:light-dark(#1D6650,#7DD3B5);--blue-soft:light-dark(#E2F0EA,#1A3830);
+--red:light-dark(#BE3C35,#FF8B82);--red-soft:light-dark(#FBE7E5,#43211F);
+--amber:light-dark(#9A6100,#F2C14E);--amber-soft:light-dark(#FDF1D3,#3D3115);--hi:#F2C14E;
+--line:light-dark(#E0E5E2,#25322D);--card:light-dark(#FFFFFF,#17211E);
+--shadow:0 1px 2px light-dark(rgba(21,33,29,.06),rgba(0,0,0,.4)),0 8px 24px -12px light-dark(rgba(21,33,29,.18),rgba(0,0,0,.6));
+--num:"KaTeX_Main","Cambria Math",Georgia,serif}
+body{font-size:15.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
+::selection{background:#F2C14E;color:#16302A}
+:focus-visible{outline:3px solid var(--chalk);outline-offset:2px}
+
+/* khung */
+.shell{display:grid;grid-template-columns:256px minmax(0,1fr);min-height:100vh}
+.rail{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:18px;padding:22px 14px 16px;background:var(--board);color:var(--chalk-ink);
+ background-image:radial-gradient(120% 60% at 0% 0%,rgba(255,255,255,.05),transparent 60%);overflow-y:auto;z-index:20}
+.brand{display:flex;align-items:center;gap:12px;padding:0 8px;font-weight:800;font-size:17px;letter-spacing:-.01em;line-height:1.15}
+.brand small{display:block;font-weight:500;font-size:12px;color:var(--chalk-mut);letter-spacing:0;margin-top:2px}
+.logo{width:36px;height:36px;flex:none}
+.glbl{display:block;font-size:12px;color:var(--chalk-mut);padding:0 8px 6px}
+.gsw{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:rgba(0,0,0,.18);padding:6px;border-radius:14px}
+.gsw button{position:relative;border:0;border-radius:10px;background:transparent;color:var(--chalk-ink);font:500 26px/1 var(--num);height:50px;display:grid;place-items:center}
+.gsw button:hover{background:rgba(255,255,255,.07)}
+.gsw button[aria-pressed=true]{background:var(--chalk);color:var(--board);font-weight:700;box-shadow:0 4px 14px -4px rgba(242,193,78,.6)}
+.gsw button.nodata{color:rgba(233,240,236,.38)}
+.gsw button.nodata[aria-pressed=true]{color:var(--board);background:rgba(242,193,78,.55)}
+.gsw button.nodata::after{content:"";position:absolute;bottom:7px;width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.6}
+.tabs{display:flex;flex-direction:column;gap:2px;flex:1}
+.tab{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;color:var(--chalk-mut);padding:10px 12px;border-radius:10px;font-weight:600;font-size:14.5px;min-height:44px;text-align:left}
+.tab:hover{background:rgba(255,255,255,.06);color:var(--chalk-ink)}
+.tab[aria-current=page]{background:var(--board-3);color:#fff}
+.tab[aria-current=page] .ic{color:var(--chalk)}
+.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.badge{margin-left:auto;font-style:normal;font-size:12px;font-weight:700;background:var(--chalk);color:var(--board);border-radius:999px;padding:1px 8px}
+.who{margin:0;display:flex;align-items:center;gap:10px;padding:12px 8px 0;border-top:1px solid rgba(255,255,255,.1);font-size:13px;color:var(--chalk-mut)}
+.who .av{width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--board-3);color:var(--chalk);font-weight:800}
+.who .wn{flex:1;line-height:1.3}.who b{display:block;color:var(--chalk-ink);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.iconbtn{border:0;background:none;color:var(--chalk-mut);width:40px;height:40px;border-radius:10px;display:grid;place-items:center;flex:none}
+.iconbtn:hover{background:rgba(255,255,255,.08);color:#fff}
+.main{min-width:0}
+.banner{margin:16px clamp(14px,3vw,36px) 0;border-radius:12px;background:var(--amber-soft);border:1px solid color-mix(in srgb,var(--amber) 30%,transparent)}
+.wrap{grid-template-columns:288px minmax(0,1fr);gap:24px;padding:24px clamp(14px,3vw,36px) 96px;max-width:1340px;margin:0}
+
+/* khách: ẩn cột, trang chào */
+body.guest .shell{grid-template-columns:1fr}
+body.guest .rail{display:none}
+.hero{min-height:100vh;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)}
+.hero-l{padding:clamp(28px,6vw,88px);display:flex;flex-direction:column;justify-content:center;gap:18px;max-width:680px}
+.brand.big{padding:0;font-size:18px;color:var(--ink)}.brand.big b{color:var(--blue)}
+.hero h1{font-size:clamp(32px,4.2vw,54px);line-height:1.08;letter-spacing:-.025em;margin:8px 0 0}
+.lead{font-size:17px;color:var(--mut);max-width:56ch;margin:0}
+.hero-r{background:var(--board);background-image:radial-gradient(90% 70% at 30% 20%,rgba(255,255,255,.07),transparent 65%);display:grid;place-items:center;padding:40px;overflow:hidden}
+.board{display:grid;grid-template-columns:repeat(2,auto);gap:6px 34px;color:var(--chalk-ink);position:relative}
+.gn{font:400 clamp(96px,13vw,190px)/1 var(--num);text-align:center;opacity:.92}
+.gn:last-of-type{color:var(--chalk)}
+.chalk{grid-column:1/-1;text-align:center;font-size:clamp(18px,2vw,26px);color:var(--chalk-mut);margin-top:10px}
+.chalk .katex{color:var(--chalk-mut)}
+.gbtn{align-self:flex-start;border-radius:12px;padding:12px 22px;box-shadow:var(--shadow)}
+
+/* bề mặt nội dung */
+.paper{background:var(--paper);background-image:none;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:clamp(20px,3vw,36px) clamp(18px,3.2vw,40px)}
+.paper::before{display:none}
+h1{font-size:clamp(24px,2.6vw,32px);font-weight:800;letter-spacing:-.02em;line-height:1.15}
+h2{font-size:19px;font-weight:700;letter-spacing:-.01em}
+.kick{color:var(--blue);font-weight:700;font-size:13.5px}
+.card{border:1px solid var(--line);border-radius:14px;background:var(--card)}
+.paper .card{background:light-dark(#F8FAF8,#18221F)}
+.btn{border:1px solid var(--line);border-radius:10px;font-weight:600;box-shadow:0 1px 0 light-dark(rgba(21,33,29,.04),transparent)}
+.btn:hover:not(:disabled){border-color:color-mix(in srgb,var(--blue) 45%,var(--line))}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:light-dark(#fff,#0D1412)}
+.btn.pri:hover:not(:disabled){filter:brightness(1.08)}
+input[type=text],input[type=date],input[type=number],select,textarea{border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+
+/* cột dạng */
+.side{top:24px;max-height:calc(100vh - 48px)}
+.side h3{font-size:13px;line-height:1.4;font-weight:600}
+.dg{border-radius:10px;font-size:14.5px;padding:10px 12px;border-left:3px solid transparent}
+.dg:hover{background:light-dark(#E8EDEA,#1A2622)}
+.dg[aria-current=true]{background:var(--paper);color:var(--ink);border-left-color:var(--chalk);box-shadow:var(--shadow)}
+.meter{height:4px;background:light-dark(#E3E8E5,#25322D)}
+.back{color:var(--blue)}
+
+/* thẻ chủ đề / chương */
+.topics{grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.tc{border:1px solid var(--line);border-radius:16px;padding:18px;min-height:150px;background:var(--card);transition:border-color .15s,box-shadow .15s,transform .15s}
+.tc:hover{border-color:color-mix(in srgb,var(--blue) 40%,var(--line));box-shadow:var(--shadow);transform:translateY(-1px)}
+.tc .no{font:500 15px/1 var(--num);color:var(--blue);font-style:italic}
+.tc b{font-size:16.5px;letter-spacing:-.005em}
+
+/* ô số bài */
+.chips{grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:8px}
+.chip{height:46px;border:1px solid var(--line);border-radius:10px;font:500 17px/1 var(--num);background:var(--paper)}
+.chip:hover{border-color:var(--blue);color:var(--blue)}
+.chip.s1{background:var(--blue);color:light-dark(#fff,#0D1412)}
+.chip.sel{box-shadow:0 0 0 3px var(--chalk);border-color:var(--board)}
+.chip.sel::after{background:var(--board);color:var(--chalk)}
+
+/* bài toán */
+.pq{font-size:16.5px;line-height:1.7}
+.opt{border:1px solid var(--line);border-radius:12px;background:var(--paper);padding:12px 14px}
+.opt b{font:700 15px/1 "Be Vietnam Pro",sans-serif}
+.sol{border-left:3px solid var(--chalk);background:light-dark(#FBF8EE,#1C211A);border-radius:0 14px 14px 0;padding:14px 20px}
+.sol h4{color:var(--amber)}
+details.ex{border:1px solid var(--line);border-radius:12px;background:light-dark(#F8FAF8,#18221F)}
+details.ex[open]{background:var(--paper)}
+.tag{border-radius:999px;padding:2px 10px;vertical-align:middle}
+.seg{border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px;background:light-dark(#EEF2EF,#1A2622)}
+.seg button{border-radius:8px;background:transparent;min-height:38px;padding:7px 14px}
+.seg button[aria-pressed=true]{background:var(--paper);color:var(--blue);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.lockbox{border:1px dashed var(--amber);border-radius:14px}
+table{font-size:14px}th{font-weight:600}
+.tray{background:var(--board);color:var(--chalk-ink);border-radius:16px;left:calc(50% + 128px)}
+.tray .btn.pri{background:var(--chalk);border-color:var(--chalk);color:var(--board)}
+.pill{background:var(--blue-soft);color:var(--blue)}
+.code{background:var(--chalk);color:var(--board)}
+.center{min-height:100vh}
+
+/* trang trống / thống kê lớp */
+.bignum{font:400 120px/1 var(--num);color:var(--blue);opacity:.9}
+.bignum.sm{font-size:40px;width:52px;text-align:center;flex:none}
+.empty-state{text-align:center;padding:48px 24px}.empty-state p{max-width:52ch;margin:8px auto 18px;color:var(--mut)}
+.gstats{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-top:10px}
+.gs{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px 14px;background:var(--paper)}
+.gs small{display:block;color:var(--mut);font-size:13px;line-height:1.35}
+.gs.off .bignum{color:var(--mut);opacity:.5}
+
+/* điện thoại / máy tính bảng */
+@media(max-width:900px){
+ .shell{grid-template-columns:1fr}
+ .rail{position:sticky;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px 12px;padding:10px 12px}
+ .brand small{display:none}.brand{padding:0;font-size:15px}.logo{width:30px;height:30px}
+ .grades{margin-left:auto}.glbl{display:none}
+ .gsw{padding:3px;gap:3px;border-radius:11px}.gsw button{height:36px;width:40px;font-size:19px}
+ .tabs{order:5;flex-direction:row;flex-wrap:nowrap;flex-basis:100%;overflow-x:auto;gap:4px;scrollbar-width:none;margin:0 -12px;padding:0 12px}
+ .tab{width:auto;flex:none;padding:7px 12px;min-height:38px;font-size:13.5px;gap:7px}
+ .tab .ic{width:17px;height:17px}
+ .who{order:2;border:0;padding:0;width:auto}.who .wn,.who .av{display:none}
+ .wrap{grid-template-columns:minmax(0,1fr);padding:16px 12px 96px;gap:14px}
+ .side{position:static;max-height:none;display:flex;gap:6px;overflow-x:auto;padding-bottom:6px}
+ .side h3{display:none}.side .back{flex:none;white-space:nowrap;align-self:center}
+ .dg{flex:none;width:220px;border:1px solid var(--line);background:var(--card)}
+ .hero{grid-template-columns:1fr}.hero-r{order:-1;min-height:220px;padding:24px}.board{grid-template-columns:repeat(4,auto);gap:4px 18px}.gn{font-size:64px}
+ .tray{left:50%}
+ .dg[aria-current=true]{border-left-color:transparent;border-bottom:3px solid var(--chalk)}
+}
+@media(prefers-reduced-motion:reduce){.tc{transition:none}.tc:hover{transform:none}}
+
 </style>
 </head>
 <body>
-<header class="top">
-  <div class="brand"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect x="3" y="3" width="24" height="24" rx="5" fill="var(--blue)"/><path d="M9 3v24" stroke="var(--red)" stroke-width="2"/><path d="M13 11h10M13 16h10M13 21h7" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>Ôn tập Toán 9</div>
-  <nav class="tabs" id="tabs"></nav>
+<div class="shell">
+<aside class="rail">
+  <div class="brand" id="brand"><svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#F2C14E"/><path d="M6.5 17.5h3.2l3.6 7.5 6.2-16.5h6" fill="none" stroke="#16302A" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Ôn tập Toán<small>THCS · lớp 6–9</small></span></div>
+  <div class="grades" id="grades"></div>
+  <nav class="tabs" id="tabs" aria-label="Mục chính"></nav>
   <div class="who" id="who"></div>
-</header>
-<div id="banner"></div>
-<main id="app"><p class="empty" style="padding:40px 5vw">Đang tải…</p></main>
+</aside>
+<div class="main"><div id="banner"></div><main id="app"><p class="empty" style="padding:40px 5vw">Đang tải…</p></main></div>
+</div>
 <div id="tray"></div>
 <template id="setup"><div class="paper"><h1>Cài đặt lần đầu</h1>
 <p>Web cần một dự án <b>Firebase</b> (miễn phí) để đăng nhập bằng Gmail và lưu dữ liệu.</p>
@@ -199,8 +361,8 @@ pre.cfg{background:var(--card);border:1.5px solid var(--line);border-radius:10px
 <p class="hint">Mở trực tiếp file trên máy (file://) sẽ không đăng nhập Google được. Để thử trên máy, dùng địa chỉ http://localhost.</p></div></template>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 <script type="module">
-// ===================== CẤU HÌNH =====================
-// 1) Cấu hình Firebase (chỉ dán phần giá trị, KHÔNG dán các dòng import)
+// ===================== CẤU HÌNH (sửa phần này) =====================
+// 1) Dán cấu hình Firebase của bạn (Project settings → Your apps → Web app → Config)
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyD_MHZ8ppUHaf7AAYq7G35Gdh-047UzZPQ",
   authDomain: "ontaptoan9-ba41e.firebaseapp.com",
@@ -223,9 +385,13 @@ const TYPEN = {tl:'Tự luận', mc:'Nhiều lựa chọn', ds:'Đúng / Sai', t
 const TYPES = {tl:'TL', mc:'TN', ds:'ĐS', tln:'TLN'};
 const LVN = {NB:'Nhận biết', TH:'Thông hiểu', VD:'Vận dụng', VDC:'Vận dụng cao'};
 const isTN = y => y === 'mc' || y === 'ds' || y === 'tln';
+const GRADES = [6,7,8,9];
+const idxPath = g => +g === 9 ? 'meta/index' : 'meta/index' + g;
+const impPath = g => +g === 9 ? 'meta/import' : 'meta/import' + g;
+const savedGrade = () => { try { const g = +localStorage.getItem('ot_grade'); return GRADES.includes(g) ? g : 0 } catch(e) { return 0 } };
 const isAdminEmail = e => !!e && ADMIN_EMAILS.map(x=>x.toLowerCase()).includes(e.toLowerCase());
 
-const S = {B:null, au:null, me:null, idx:null, cfg:{basicN:5}, P:{}, cache:{}, prog:null,
+const S = {B:null, au:null, me:null, idx:null, idxs:{}, grade: savedGrade() || 9, cfg:{basicN:5}, P:{}, cache:{}, prog:null,
   classes:[], users:[], progAll:{}, asg:[], sel:new Set(), topic:null, dang:null, typ:'tl', pid:null, asgId:null,
   openSol:false, ch:null, bai:null, ttyp:'mc', tnth:{}, pick:{}, flt:'pending', q:'', trackCls:'', trackAsg:null, editAsg:null, subs:[]};
 
@@ -282,14 +448,20 @@ const role = () => S.me && S.me.status === 'active' ? S.me.role : null;
 const isStaff = () => role() === 'admin' || role() === 'teacher';
 const isFull = (u = S.me) => !!u && (u.role === 'admin' || u.role === 'teacher' || (u.plan === 'full' && (!u.until || toDate(u.until) > new Date())));
 const planName = u => isFull(u) ? 'Full' : 'Cơ bản';
-const topicById = id => S.idx.topics.find(t => t.id === id);
-const dangById = id => { for (const t of S.idx.topics) for (const d of t.dangs) if (d.id === id) return d };
-const chById = id => S.idx.tn.find(c => c.id === id);
-const baiById = id => { for (const c of S.idx.tn) for (const b of c.bais) if (b.id === id) return b };
-const dangOf = m => m.k === 'tn' ? baiById(m.bai).dangs.find(d => d.id === m.d) : dangById(m.d);
-function label(pid){ const m = S.P[pid]; if (!m) return pid; const d = dangOf(m); const same = d.items.filter(x => x[1] === m.y); const k = same.findIndex(x=>x[0]===pid)+1;
-  if (m.k === 'tn') { const b = baiById(m.bai), c = chById(m.t); return `C${S.idx.tn.indexOf(c)+1} · Bài ${b.no} · D${b.dangs.indexOf(d)+1} · ${TYPES[m.y]} ${k}` }
-  const t = topicById(m.t); return `${SHORT[m.t]} · D${t.dangs.indexOf(d)+1} · TL ${k}` }
+const topicById = (id, I = S.idx) => I.topics.find(t => t.id === id);
+const dangById = (id, I = S.idx) => { for (const t of I.topics) for (const d of t.dangs) if (d.id === id) return d };
+const chById = (id, I = S.idx) => (I.tn||[]).find(c => c.id === id);
+const baiById = (id, I = S.idx) => { for (const c of (I.tn||[])) for (const b of c.bais) if (b.id === id) return b };
+const idxOfM = m => S.idxs[m.g] || S.idx;
+const dangOf = m => { const I = idxOfM(m); return m.k === 'tn' ? baiById(m.bai, I).dangs.find(d => d.id === m.d) : dangById(m.d, I) };
+const shortOf = (t, I) => SHORT[t.id] || t.short || ('CĐ ' + (I.topics.indexOf(t)+1));
+function label(pid){ const m = S.P[pid]; if (!m) return pid; const I = idxOfM(m), d = dangOf(m); const same = d.items.filter(x => x[1] === m.y); const k = same.findIndex(x=>x[0]===pid)+1;
+  const gl = m.g !== S.grade ? `L${m.g} · ` : '';
+  if (m.k === 'tn') { const b = baiById(m.bai, I), c = chById(m.t, I); return `${gl}C${I.tn.indexOf(c)+1} · Bài ${b.no} · D${b.dangs.indexOf(d)+1} · ${TYPES[m.y]} ${k}` }
+  const t = topicById(m.t, I); return `${gl}${shortOf(t, I)} · D${t.dangs.indexOf(d)+1} · TL ${k}` }
+function setGrade(g){ g = +g; if (!GRADES.includes(g)) return; S.grade = g; S.idx = S.idxs[g] || null;
+  S.topic = S.dang = S.ch = S.bai = S.pid = null; S.ed = null; try { localStorage.setItem('ot_grade', g) } catch(e) {} render(); scrollTo(0,0) }
+const hasData = g => !!(S.idxs[g] && (S.idxs[g].topics||[]).length + (S.idxs[g].tn||[]).length);
 const stat = (prog, pid) => prog && prog.done && prog.done[pid] ? prog.done[pid].s : 0;
 const myAsgs = () => S.asg.filter(a => role()==='student' ? a.classId === S.me.classId : true);
 function canSee(pid){ if (isStaff() || isFull()) return true; const m = S.P[pid]; return !!(m && m.basic) }
@@ -300,15 +472,34 @@ function tabsFor(){ const r = role();
   if (r === 'teacher') return [['kho','Tự luận'],['khotn','Trắc nghiệm'],['lop','Lớp & học sinh'],['giao','Giao bài'],['theodoi','Theo dõi']];
   return [['baigiao','Bài được giao'],['ontap','Tự luận'],['tracnghiem','Trắc nghiệm'],['ketqua','Kết quả']] }
 const curView = () => { const ok = tabsFor().map(t=>t[0]); const h = location.hash.slice(1); return ok.includes(h) ? h : ok[0] };
-function go(v){ S.pid=null; S.asgId=null; if (location.hash.slice(1) !== v) location.hash = v; else render() }
+function go(v){ S.pid=null; S.asgId=null; S.ed=null; if (location.hash.slice(1) !== v) location.hash = v; else render() }
 window.addEventListener('hashchange', () => render());
 const wrap1 = (h, w) => `<div class="wrap" style="grid-template-columns:minmax(0,1fr);max-width:${w||1100}px">${h}</div>`;
+const LOGO = '<svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#F2C14E"/><path d="M6.5 17.5h3.2l3.6 7.5 6.2-16.5h6" fill="none" stroke="#16302A" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const GICON = '<svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
 
+const IC = {
+  book:'<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M8 7h8M8 11h6"/>',
+  check:'<rect x="3" y="3" width="18" height="18" rx="4"/><path d="m7.5 12 3 3 6-6"/>',
+  users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.4 3.2-5.5 6.5-5.5s5.9 2.1 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.7.8 2.8 2.6 3 5.2"/>',
+  send:'<path d="M21 3 10 14"/><path d="m21 3-7 18-4-7-7-4z"/>',
+  chart:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6.5 8-6.5s7.2 2.5 8 6.5"/>',
+  db:'<ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+  inbox:'<path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5.5 5h13L21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6z"/>',
+  award:'<circle cx="12" cy="9" r="6"/><path d="m8.5 14-1.5 8 5-3 5 3-1.5-8"/>',
+  out:'<path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l-5-5 5-5M5 12h11"/>'};
+const icon = k => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${IC[k]}</svg>`;
+const TABIC = {kho:'book', ontap:'book', khotn:'check', tracnghiem:'check', lop:'users', giao:'send', theodoi:'chart', nguoidung:'user', quantri:'db', baigiao:'inbox', ketqua:'award'};
 function renderTop(){
   const v = curView(), r = role();
-  $('#tabs').innerHTML = r ? tabsFor().map(([k,t]) => `<button class="tab" data-go="${k}" ${k===v?'aria-current="page"':''}>${t}</button>`).join('') : '';
-  $('#who').innerHTML = S.au ? `<span><b>${esc(S.me&&S.me.name||S.au.name||S.au.email)}</b>${r?' · '+ROLE[r]:''}</span>${r==='student'?`<span class="plan ${isFull()?'full':''}">Gói ${planName()}</span>`:''}<button class="btn sm" data-signout>Đăng xuất</button>` : '';
+  document.body.classList.toggle('guest', !r);
+  const counts = {}; if (r === 'admin' || r === 'teacher') { const pend = S.users.filter(u => u.status === 'pending' && (r === 'admin' || u.reqRole === 'student')).length; if (pend) { counts.nguoidung = pend; counts.lop = S.users.filter(u => u.status === 'pending' && u.reqRole === 'student').length } }
+  if (r === 'student') { const open = myAsgs().filter(a => a.pids.some(p => !stat(S.prog, p))).length; if (open) counts.baigiao = open }
+  $('#grades').innerHTML = r ? `<span class="glbl">Chọn lớp</span><div class="gsw" role="group" aria-label="Chọn lớp">${GRADES.map(g => `<button data-grade="${g}" aria-pressed="${g===S.grade}" class="${hasData(g)?'':'nodata'}" title="Toán ${g}${hasData(g)?'':' (chưa có bài)'}">${g}</button>`).join('')}</div>` : '';
+  $('#tabs').innerHTML = r ? tabsFor().map(([k,t]) => `<button class="tab" data-go="${k}" ${k===v?'aria-current="page"':''}>${icon(TABIC[k])}<span>${t}</span>${counts[k]?`<em class="badge">${counts[k]}</em>`:''}</button>`).join('') : '';
+  const nm = S.me && S.me.name || S.au && (S.au.name || S.au.email) || '';
+  $('#who').innerHTML = S.au ? `<div class="av" aria-hidden="true">${esc((nm.trim().split(/\s+/).pop()||'?')[0].toUpperCase())}</div><div class="wn"><b>${esc(nm)}</b><small>${r?ROLE[r]:'Chưa được duyệt'}${r==='student'?` · Gói ${planName()}`:''}</small></div><button class="iconbtn" data-signout title="Đăng xuất" aria-label="Đăng xuất">${icon('out')}</button>` : '';
 }
 function render(){
   renderTop();
@@ -316,18 +507,24 @@ function render(){
   if (!S.me) return renderRegister();
   if (S.me.status === 'pending') return renderPending();
   if (S.me.status === 'blocked') return renderBlocked();
-  if (!S.idx) { $('#app').innerHTML = role()==='admin' ? wrap1(`<div class="paper"><h1>Chưa có dữ liệu bài học</h1><p>Vào tab <b>Gói & dữ liệu</b> để nạp file <code>du_lieu_toan9.json</code>.</p><button class="btn pri" data-go="quantri">Nạp dữ liệu</button></div>`) : wrap1('<p class="empty">Đang tải bài học… (nếu lâu, Admin chưa nạp dữ liệu)</p>');
-    if (curView() !== 'quantri') return; }
   const v = curView();
+  if (!S.idx && ['kho','ontap','khotn','tracnghiem','ketqua','theodoi'].includes(v)) { $('#app').innerHTML = wrap1(`<div class="paper empty-state"><div class="bignum">${S.grade}</div><h1>Lớp ${S.grade} chưa có bài</h1>
+    <p>${role()==='admin' ? `Nạp file dữ liệu lớp ${S.grade} trong mục <b>Gói & dữ liệu</b>, hoặc chọn lớp khác ở cột bên trái.` : 'Dữ liệu lớp này đang được chuẩn bị. Chọn lớp khác ở cột bên trái.'}</p>
+    ${role()==='admin' ? '<button class="btn pri" data-go="quantri">Mở Gói & dữ liệu</button>' : ''}</div>`, 760); renderTray(); return }
   ({kho:renderLearn, ontap:renderLearn, khotn:renderTN, tracnghiem:renderTN, lop:renderClasses, giao:renderAssign, theodoi:renderTrack, nguoidung:renderUsers, quantri:renderAdmin, baigiao:renderMyAsg, ketqua:renderResults})[v]();
   renderTray();
 }
 
 /* ---------------- auth screens ---------------- */
 function renderLogin(){
-  $('#app').innerHTML = `<div class="center"><div class="paper"><h1>Ôn tập Toán 9</h1>
-  <p>Kho bài tự luận theo chủ đề và trắc nghiệm theo chương (nhiều lựa chọn, đúng/sai, trả lời ngắn), có lời giải chi tiết. Học sinh, giáo viên đăng nhập bằng Gmail và chờ quản trị duyệt.</p>
-  <button class="gbtn" data-signin>${GICON} Đăng nhập bằng Google</button></div></div>` }
+  $('#app').innerHTML = `<div class="hero"><div class="hero-l">
+   <div class="brand big">${LOGO}<span>Ôn tập Toán <b>THCS</b></span></div>
+   <h1>Luyện toán theo từng dạng, từ lớp 6 đến lớp 9.</h1>
+   <p class="lead">Bài tự luận xếp theo chủ đề và dạng toán, trắc nghiệm theo chương với ba kiểu câu: nhiều lựa chọn, đúng/sai, trả lời ngắn. Bài nào cũng có lời giải chi tiết. Giáo viên giao bài và theo dõi tiến độ của từng học sinh.</p>
+   <button class="gbtn" data-signin>${GICON} Đăng nhập bằng Google</button>
+   <p class="hint">Học sinh và giáo viên dùng Gmail để đăng kí, tài khoản được duyệt rồi mới dùng.</p></div>
+   <div class="hero-r" aria-hidden="true"><div class="board">${GRADES.map(g=>`<span class="gn">${g}</span>`).join('')}<div class="chalk">\\(x^2-5x+6=0\\)</div></div></div></div>`;
+  if (window.katex) document.querySelectorAll('.chalk').forEach(el => { el.innerHTML = M(el.textContent) }) }
 async function renderRegister(){
   $('#app').innerHTML = `<div class="center"><div class="paper"><h1 style="font-size:30px">Đăng kí tài khoản</h1>
   <p class="hint">Gmail: <b>${esc(S.au.email)}</b>. Sau khi gửi, tài khoản cần được duyệt mới dùng được.</p>
@@ -349,19 +546,20 @@ async function findClass(code){ code = (code||'').trim().toUpperCase(); if (!cod
 /* ---------------- learn (kho bài / ôn tập) ---------------- */
 function renderLearn(){
   const staff = isStaff();
+  if (S.ed && S.ed.k === 'tl' && $('#edbox')) return;
   if (!S.topic){
     const cards = S.idx.topics.map((t,i) => { const its = t.dangs.flatMap(d=>d.items); const tn = 0;
       const done = staff ? 0 : its.filter(x=>stat(S.prog,x[0])).length;
       return `<button class="tc" data-topic="${t.id}"><span class="no">Chủ đề ${i+1}</span><b>${esc(t.name)}</b><small>${t.dangs.length} dạng · ${its.length} bài tự luận${staff?'':' · đã làm '+done}</small>${staff?'':`<div class="meter"><i style="width:${its.length?done/its.length*100:0}%"></i></div>`}</button>` }).join('');
     const plan = staff ? '' : `<p class="hint">${isFull()?'Bạn đang dùng <b>Gói Full</b>: mở toàn bộ bài tập.':`Bạn đang dùng <b>Gói Cơ bản</b>: mở ${S.cfg.basicN} bài đầu mỗi loại của từng dạng, cùng các bài được giao. Liên hệ Admin để nâng cấp Gói Full.`}</p>`;
-    $('#app').innerHTML = wrap1(`<div class="paper"><h1>${staff?'Kho bài tự luận':'Tự luận theo chủ đề'}</h1>${plan}<div class="topics">${cards}</div></div>`, 1300); return }
+    $('#app').innerHTML = wrap1(`<div class="paper"><div class="kick">Toán ${S.grade}</div><h1>${staff?'Kho bài tự luận':'Tự luận theo chủ đề'}</h1>${plan}<div class="topics">${cards}</div></div>`, 1300); return }
   const T = topicById(S.topic); if (!S.dang || !T.dangs.some(d=>d.id===S.dang)) S.dang = T.dangs[0].id;
   const d = T.dangs.find(x=>x.id===S.dang);
   const side = `<button class="back" data-alltopics>← Tất cả chủ đề</button><h3>${esc(T.name)}</h3>` + T.dangs.map((x,i) => { const n = x.items.length, done = x.items.filter(p=>stat(S.prog,p[0])).length;
     return `<button class="dg" data-dang="${x.id}" aria-current="${S.dang===x.id}">Dạng ${i+1}. ${M(x.name)}<small>${n} bài${staff?'':' · đã làm '+done}</small>${staff?'':`<div class="meter"><i style="width:${n?done/n*100:0}%"></i></div>`}</button>` }).join('');
-  const main = S.pid && !S.asgId ? probShell() : dangHTML(T, d);
+  const main = S.ed ? '<div class="paper" id="edbox"></div>' : S.pid && !S.asgId ? probShell() : dangHTML(T, d);
   $('#app').innerHTML = `<div class="wrap"><aside class="side">${side}</aside><section id="main">${main}</section></div>`;
-  if (S.pid && !S.asgId) loadProb();
+  if (S.ed) edDraw(); else if (S.pid && !S.asgId) loadProb();
 }
 function dangHTML(T, d){
   const i = T.dangs.indexOf(d)+1, staff = isStaff();
@@ -374,7 +572,7 @@ function dangHTML(T, d){
   const list = d.items;
   const chips = list.map((x,k) => { const p = x[0], s = staff ? 0 : stat(S.prog,p), lk = !canSee(p);
     return `<button class="chip ${s?'s'+s:''} ${lk?'lock':''} ${staff&&S.sel.has(p)?'sel':''}" data-pid="${p}" aria-label="Bài ${k+1}${lk?', thuộc Gói Full':''}">${k+1}</button>` }).join('');
-  const tools = staff ? `<div class="row"><span class="hint">Bấm số bài để xem và chọn giao.</span><button class="btn sm" data-selall="${d.id}" data-styp="tl">Chọn cả dạng</button><button class="btn sm" data-rand="${d.id}" data-styp="tl">Chọn ngẫu nhiên 5 bài</button></div>`
+  const tools = staff ? `<div class="row"><span class="hint">Bấm số bài để xem và chọn giao.</span><button class="btn sm" data-selall="${d.id}" data-styp="tl">Chọn cả dạng</button><button class="btn sm" data-rand="${d.id}" data-styp="tl">Chọn ngẫu nhiên 5 bài</button>${isAdminR()?`<button class="btn sm pri" data-padd="${d.id}" data-ptyp="tl">+ Thêm bài</button>`:''}</div>`
     : `<div class="legend"><span class="l1">${ST[1]}</span><span class="l2">${ST[2]}</span><span class="l3">${ST[3]}</span><span>Chưa làm</span>${isFull()?'':'<span>🔒 Gói Full</span>'}</div>`;
   return `<div class="paper">${th}<h2>Bài tập (${list.length})</h2>${tools}<div class="chips">${chips}</div></div>`;
 }
@@ -428,7 +626,8 @@ async function loadProb(){
       body += `<button class="btn sm" data-redo>Làm lại</button>`; needSelf = !P.ans }
   } else { needSelf = !staff }
   const solBtn = P.so && P.so.length ? (solLocked ? `<button class="btn" disabled>🔒 ${isTN(P.y)?'Trả lời':'Tự đánh giá'} trước rồi xem lời giải</button>` : `<button class="btn" data-sol>${S.openSol?'Ẩn lời giải':'Lời giải'}</button>`) : `<span class="hint">Chưa có lời giải trong tài liệu gốc.</span>`;
-  const sel = staff ? `<div class="checks"><label><input type="checkbox" data-pick="${pid}" ${S.sel.has(pid)?'checked':''}> Chọn để giao</label></div>` : '';
+  const sel = (staff ? `<div class="checks"><label><input type="checkbox" data-pick="${pid}" ${S.sel.has(pid)?'checked':''}> Chọn để giao</label></div>` : '')
+    + (isAdminR() && !a ? `<button class="btn sm" data-pedit="${pid}">✏️ Sửa bài</button><button class="btn sm red" data-pdel="${pid}">🗑 Xoá bài</button>` : '');
   const assess = needSelf ? `<p class="hint" style="margin-top:14px">${isTN(P.y)?'Câu này chưa có đáp án để chấm tự động. Xem lời giải rồi tự chấm:':'Tự đánh giá:'}</p><div class="assess" role="group" aria-label="Tự đánh giá">${(isTN(P.y)?[[1,'Mình làm đúng'],[3,'Mình làm sai']]:[[1,ST[1]],[2,ST[2]],[3,ST[3]]]).map(([n,t])=>`<button class="a${n}" data-as="${n}" aria-pressed="${s===n}">${t}</button>`).join('')}</div>` : '';
   box().innerHTML = `${head(P.src)}${body}<div class="row" style="margin-top:14px">${solBtn}${sel}</div>${S.openSol && !solLocked ? `<div class="sol pq"><h4>Lời giải</h4>${paras(P.so)}</div>` : ''}${assess}${nav}`;
 }
@@ -440,19 +639,20 @@ function normAns(v){ let s = String(v).replace(/\\\(|\\\)/g,'').normalize('NFC')
 function tnCounts(items){ const c = {mc:0, ds:0, tln:0}; items.forEach(x => c[x[1]]++); return c }
 function renderTN(){
   const staff = isStaff();
+  if (S.ed && S.ed.k === 'tn' && $('#edbox')) return;
   if (!S.idx.tn || !S.idx.tn.length) { $('#app').innerHTML = wrap1('<div class="paper"><h1>Trắc nghiệm</h1><p class="empty">Chưa có dữ liệu trắc nghiệm. Admin cần nạp lại file dữ liệu mới.</p></div>'); return }
   if (!S.ch) {
     const cards = S.idx.tn.map((c,i) => { const its = c.bais.flatMap(b=>b.dangs.flatMap(d=>d.items)); const n = tnCounts(its);
       const done = staff ? 0 : its.filter(x=>stat(S.prog,x[0])).length;
       return `<button class="tc" data-ch="${c.id}"><span class="no">Chương ${i+1}</span><b>${esc(c.name.replace(/^Chương \d+\.\s*/,''))}</b><small>${c.bais.length} bài · ${n.mc} nhiều lựa chọn · ${n.ds} đúng/sai · ${n.tln} trả lời ngắn${staff?'':' · đã làm '+done}</small>${staff?'':`<div class="meter"><i style="width:${its.length?done/its.length*100:0}%"></i></div>`}</button>` }).join('');
-    $('#app').innerHTML = wrap1(`<div class="paper"><h1>${staff?'Kho trắc nghiệm':'Trắc nghiệm theo chương'}</h1><p class="hint">Ba dạng câu hỏi theo cấu trúc mới: nhiều lựa chọn, đúng/sai, trả lời ngắn. Mỗi câu có mức độ Nhận biết – Thông hiểu – Vận dụng – Vận dụng cao.</p><div class="topics">${cards}</div></div>`, 1300); return }
+    $('#app').innerHTML = wrap1(`<div class="paper"><div class="kick">Toán ${S.grade}</div><h1>${staff?'Kho trắc nghiệm':'Trắc nghiệm theo chương'}</h1><p class="hint">Ba dạng câu hỏi theo cấu trúc mới: nhiều lựa chọn, đúng/sai, trả lời ngắn. Mỗi câu có mức độ Nhận biết – Thông hiểu – Vận dụng – Vận dụng cao.</p><div class="topics">${cards}</div></div>`, 1300); return }
   const C = chById(S.ch); if (!S.bai || !C.bais.some(b=>b.id===S.bai)) S.bai = C.bais[0].id;
   const B = C.bais.find(b=>b.id===S.bai);
   const side = `<button class="back" data-allch>← Tất cả chương</button><h3>${esc(C.name)}</h3>` + C.bais.map(b => { const its = b.dangs.flatMap(d=>d.items), done = its.filter(x=>stat(S.prog,x[0])).length;
     return `<button class="dg" data-bai="${b.id}" aria-current="${S.bai===b.id}">${M(esc(b.name))}<small>${its.length} câu${staff?'':' · đã làm '+done}</small>${staff?'':`<div class="meter"><i style="width:${its.length?done/its.length*100:0}%"></i></div>`}</button>` }).join('');
-  const main = S.pid && !S.asgId ? probShell() : baiHTML(C, B);
+  const main = S.ed ? '<div class="paper" id="edbox"></div>' : S.pid && !S.asgId ? probShell() : baiHTML(C, B);
   $('#app').innerHTML = `<div class="wrap"><aside class="side">${side}</aside><section id="main">${main}</section></div>`;
-  if (S.pid && !S.asgId) loadProb(); else loadTheory(B.id);
+  if (S.ed) edDraw(); else if (S.pid && !S.asgId) loadProb(); else loadTheory(B.id);
 }
 function baiHTML(C, B){
   const staff = isStaff();
@@ -464,7 +664,7 @@ function baiHTML(C, B){
     const meth = th && th.methods && th.methods[d.id];
     return `<div class="card"><h3>Dạng ${i+1}. ${M(esc(d.name))}</h3>${meth&&meth.length?`<details class="ex"><summary>Phương pháp giải</summary>${paras(meth)}</details>`:''}
       <div class="seg" role="group">${['mc','ds','tln'].map(t=>`<button data-ttyp="${t}" aria-pressed="${t===ty}" ${n[t]?'':'disabled'}>${TYPEN[t]} (${n[t]})</button>`).join('')}</div>
-      ${staff?`<div class="row" style="margin-bottom:6px"><button class="btn sm" data-selall="${d.id}" data-styp="${ty}">Chọn tất cả</button><button class="btn sm" data-rand="${d.id}" data-styp="${ty}">Chọn ngẫu nhiên 5 câu</button></div>`:''}
+      ${staff?`<div class="row" style="margin-bottom:6px"><button class="btn sm" data-selall="${d.id}" data-styp="${ty}">Chọn tất cả</button><button class="btn sm" data-rand="${d.id}" data-styp="${ty}">Chọn ngẫu nhiên 5 câu</button>${isAdminR()?`<button class="btn sm pri" data-padd="${d.id}" data-ptyp="${ty}">+ Thêm câu ${TYPEN[ty].toLowerCase()}</button>`:''}</div>`:''}
       <div class="chips">${chips}</div></div>` }).join('');
   const legend = staff ? '' : `<div class="legend"><span class="l1">Đúng</span><span class="l3">Sai</span><span>Chưa làm</span>${isFull()?'':'<span>🔒 Gói Full</span>'}</div>`;
   return `<div class="paper"><div class="kick">${esc(C.name)}</div><h1>${M(esc(B.name))}</h1>
@@ -509,7 +709,7 @@ function renderClasses(){
   const studs = S.users.filter(u => u.reqRole==='student' && (role()==='admin' ? cls.some(c=>c.id===u.classId) : u.teacherUid===S.au.uid));
   const pend = studs.filter(u=>u.status==='pending');
   const cards = cls.map(c => { const mem = studs.filter(u=>u.classId===c.id);
-    return `<div class="card"><div class="row sp"><h3>Lớp ${esc(c.name)}</h3><span>Mã lớp: <span class="code">${esc(c.code)}</span></span></div>
+    return `<div class="card"><div class="row sp"><h3>Lớp ${esc(c.name)} <span class="pill">Khối ${c.grade||9}</span></h3><span>Mã lớp: <span class="code">${esc(c.code)}</span></span></div>
     <p class="hint">${mem.filter(u=>u.status==='active').length} học sinh · ${mem.filter(u=>u.status==='pending').length} chờ duyệt${role()==='admin'?' · GV: '+esc((S.users.find(u=>u.id===c.teacherUid)||{}).name||''):''}</p>
     <div class="scroll"><table class="users"><thead><tr><th>Học sinh</th><th>Gmail</th><th>Gói</th><th>Trạng thái</th><th></th></tr></thead><tbody>
     ${mem.sort((a,b)=>a.name.localeCompare(b.name,'vi')).map(u=>`<tr><td><b>${esc(u.name)}</b></td><td>${esc(u.email)}</td><td>${planName(u)}</td><td>${u.status==='active'?'Đang học':u.status==='pending'?'<span class="pill red">Chờ duyệt</span>':'Đã khoá'}</td>
@@ -517,7 +717,7 @@ function renderClasses(){
     <div class="row" style="margin-top:8px"><button class="btn sm red" data-delcls="${esc(c.id)}">Xoá lớp</button></div></div>` }).join('');
   $('#app').innerHTML = wrap1(`<div class="paper"><h1>${role()==='admin'?'Lớp học':'Lớp & học sinh'}</h1>
    ${pend.length?`<div class="banner" style="margin:0 0 12px">Có ${pend.length} học sinh đang chờ duyệt.</div>`:''}
-   <form id="newcls" class="row"><input type="text" id="cn" placeholder="Tên lớp, VD: 9A1" style="max-width:240px" required><button class="btn pri">Tạo lớp</button></form>
+   <form id="newcls" class="row"><input type="text" id="cn" placeholder="Tên lớp, VD: ${S.grade}A1" style="max-width:220px" required><select id="cg" style="width:auto" aria-label="Khối">${GRADES.map(g=>`<option value="${g}" ${g===S.grade?'selected':''}>Khối ${g}</option>`).join('')}</select><button class="btn pri">Tạo lớp</button></form>
    <p class="hint">Mỗi lớp có một mã. Học sinh nhập mã khi đăng kí, sau đó thầy cô bấm "Duyệt". Gói Full do Admin cấp.</p>
    ${cards || '<p class="empty">Chưa có lớp nào.</p>'}</div>`, 1100) }
 function genCode(){ const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i=0;i<6;i++) s += a[Math.floor(Math.random()*a.length)]; return s }
@@ -575,7 +775,7 @@ function renderTrack(){
     mx += `<h2>Bài cần chữa trên lớp</h2><div class="scroll"><table><thead><tr><th>Bài</th><th class="num">Chưa làm được / sai</th><th class="num">Nhờ lời giải</th><th class="num">Làm được / đúng</th><th class="num">Chưa làm</th></tr></thead><tbody>
     ${rows.slice(0,10).map(r=>`<tr><td>${r.k+1}. ${esc(label(r.p))}</td><td class="num">${r.c[3]}</td><td class="num">${r.c[2]}</td><td class="num">${r.c[1]}</td><td class="num">${r.c[0]}</td></tr>`).join('')}</tbody></table></div>` }
   const T = S.idx.topics;
-  const all = `<h2>Tổng quan theo chủ đề</h2><div class="scroll"><table><thead><tr><th>Học sinh</th><th>Gói</th>${T.map(t=>`<th class="num" title="${esc(t.name)}">${esc(SHORT[t.id])}</th>`).join('')}<th class="num">TN đã làm</th><th class="num">TN đúng</th><th>Gần nhất</th></tr></thead><tbody>
+  const all = `<h2>Tổng quan theo chủ đề</h2><div class="scroll"><table><thead><tr><th>Học sinh</th><th>Gói</th>${T.map(t=>`<th class="num" title="${esc(t.name)}">${esc(shortOf(t, S.idx))}</th>`).join('')}<th class="num">TN đã làm</th><th class="num">TN đúng</th><th>Gần nhất</th></tr></thead><tbody>
    ${studs.map(u=>{const pr=pg(u); const cnt={}; Object.keys((pr&&pr.done)||{}).forEach(p=>{const m=S.P[p]; if(m&&m.k==='tl') cnt[m.t]=(cnt[m.t]||0)+1}); const st=tnStats(pr,Object.keys((pr&&pr.done)||{}));
      return `<tr><td>${esc(u.name)}</td><td>${planName(u)}</td>${T.map(t=>`<td class="num">${cnt[t.id]||''}</td>`).join('')}<td class="num">${st.n||''}</td><td class="num">${st.n?Math.round(st.ok/st.n*100)+'%':''}</td><td>${pr&&pr.upd?new Date(pr.upd).toLocaleString('vi-VN'):''}</td></tr>`}).join('')}</tbody></table></div>`;
   $('#app').innerHTML = wrap1(`<div class="paper">${head}${mx}${all}</div>`, 1300) }
@@ -605,14 +805,17 @@ function rowVals(tr){ const cid = tr.querySelector('[data-ucls]').value; const c
 
 /* ---------------- admin: plans & data ---------------- */
 function renderAdmin(){
-  const total = S.idx ? allDangs(S.idx).reduce((u,d)=>u+d.items.length,0) : 0;
-  const open = S.idx ? allDangs(S.idx).reduce((u,d)=>u+d.items.filter(x=>x[2]).length,0) : 0;
+  const cnt = (g, f) => S.idxs[g] ? allDangs(S.idxs[g]).reduce((u,d)=>u+d.items.filter(f).length,0) : 0;
+  const total = GRADES.reduce((u,g)=>u+cnt(g, ()=>1),0), open = GRADES.reduce((u,g)=>u+cnt(g, x=>x[2]),0);
+  const gstat = `<div class="gstats">${GRADES.map(g => { const I = S.idxs[g]; return `<div class="gs ${I?'':'off'}"><span class="bignum sm">${g}</span><div><b>Lớp ${g}</b><small>${I ? `${(I.topics||[]).length} chủ đề tự luận · ${(I.tn||[]).length} chương trắc nghiệm · ${cnt(g,()=>1)} bài` : 'Chưa có dữ liệu'}</small></div></div>` }).join('')}</div>`;
   $('#app').innerHTML = wrap1(`<div class="paper"><h1>Gói & dữ liệu</h1>
-   <div class="card"><h3>Gói Cơ bản</h3><form id="planf" class="row"><label for="bn">Mở</label><input type="number" id="bn" class="num-in" min="0" max="300" value="${S.cfg.basicN}"><span>câu đầu <b>mỗi loại</b> (tự luận / nhiều lựa chọn / đúng-sai / trả lời ngắn) của từng dạng</span><button class="btn sm pri" ${S.idx?'':'disabled'}>Áp dụng</button></form>
+   <div class="card"><h3>Gói Cơ bản</h3><form id="planf" class="row"><label for="bn">Mở</label><input type="number" id="bn" class="num-in" min="0" max="300" value="${S.cfg.basicN}"><span>câu đầu <b>mỗi loại</b> (tự luận / nhiều lựa chọn / đúng-sai / trả lời ngắn) của từng dạng</span><button class="btn sm pri" ${total?'':'disabled'}>Áp dụng</button></form>
    <p class="hint">Hiện mở ${open}/${total} bài cho Gói Cơ bản. Gói Full mở toàn bộ. Đổi số này sẽ cập nhật lại toàn bộ bài (mất 1–2 phút).</p></div>
-   <div class="card"><h3>Nạp dữ liệu bài học</h3><p class="hint">Chọn file <code>du_lieu_toan9.json</code>. Nếu lần trước bị dừng giữa chừng, chọn lại file là web tự nạp tiếp từ chỗ dừng. Firebase miễn phí cho 20.000 lượt ghi mỗi ngày.</p>
+   <div class="card"><h3>Dữ liệu theo lớp</h3>${gstat}</div>
+   <div class="card"><h3>Nạp dữ liệu bài học</h3><div class="row" style="margin-bottom:8px"><label for="impg"><b>Nạp cho</b></label><select id="impg" style="width:auto">${GRADES.map(g=>`<option value="${g}" ${g===S.grade?'selected':''}>Lớp ${g}</option>`).join('')}</select></div><p class="hint">Chọn file dữ liệu của lớp đó (ví dụ <code>du_lieu_toan9.json</code>). Nạp lớp này không ảnh hưởng lớp khác. Nếu lần trước bị dừng giữa chừng, chọn lại file là web tự nạp tiếp từ chỗ dừng. Firebase miễn phí cho 20.000 lượt ghi mỗi ngày.</p>
    <div class="row"><input type="file" id="imp" accept=".json,application/json"><label class="checks"><label><input type="checkbox" id="impfresh"> Nạp lại từ đầu</label></label></div>
-   <div class="row" style="margin-top:8px"><button type="button" class="btn sm" data-count>Kiểm tra số bài trên máy chủ</button><span id="cnt" class="hint"></span></div><div id="impst" class="hint" style="margin-top:8px">${S.idx?`Đã có dữ liệu phiên bản ${esc(S.idx.version||'')}: ${S.idx.topics.length} chủ đề tự luận, ${(S.idx.tn||[]).length} chương trắc nghiệm, ${total} bài/câu.`:'Chưa có dữ liệu.'}</div></div>
+   <div class="row" style="margin-top:8px"><button type="button" class="btn sm" data-count>Kiểm tra số bài trên máy chủ</button><span id="cnt" class="hint"></span></div><div id="impst" class="hint" style="margin-top:8px"></div></div>
+   ${aiCard()}
    <div class="card"><h3>Admin</h3><p>${ADMIN_EMAILS.map(esc).join(', ')}</p><p class="hint">Danh sách Admin đặt trong file index.html và firestore.rules.</p></div></div>`, 1000) }
 function allDangs(idx){ const L = []; idx.topics.forEach(t=>t.dangs.forEach(d=>L.push(d))); (idx.tn||[]).forEach(c=>c.bais.forEach(b=>b.dangs.forEach(d=>L.push(d)))); return L }
 function flagIndex(idx, n){ for (const d of allDangs(idx)) { const c = {}; for (const it of d.items) { c[it[1]] = c[it[1]] || 0; it[2] = c[it[1]] < n ? 1 : 0; c[it[1]]++ } } }
@@ -620,39 +823,220 @@ async function importData(file){
   const st = $('#impst'); st.textContent = 'Đang đọc file…';
   let J; try { J = JSON.parse(await file.text()) } catch(e) { st.textContent = 'File không đúng định dạng.'; return }
   if (!J.index || !J.problems) { st.textContent = 'File không phải dữ liệu bài học.'; return }
+  const g = +(J.index.grade || $('#impg').value || S.grade);
+  if (J.index.grade && +$('#impg').value !== g) { st.textContent = `File này là dữ liệu lớp ${g}, nhưng đang chọn nạp cho lớp ${$('#impg').value}. Chọn đúng lớp rồi chọn lại file.`; return }
+  const clash = Object.keys(J.problems).find(pid => S.P[pid] && S.P[pid].g !== g);
+  if (clash) { st.textContent = `Mã bài ${clash} đã có ở lớp ${S.P[clash].g}. File này có thể là dữ liệu của lớp khác.`; return }
+  J.index.grade = g;
   flagIndex(J.index, S.cfg.basicN);
   const bmap = {}; allDangs(J.index).forEach(d=>d.items.forEach(it=>bmap[it[0]]=!!it[2]));
   const ops = Object.keys(J.problems).sort().map(pid => ({p:'problems/'+pid, d:{...J.problems[pid], basic: bmap[pid]||false}}));
   Object.keys(J.tnth||{}).sort().forEach(bid => ops.push({p:'tnth/'+bid, d:J.tnth[bid]}));
   const ver = J.index.version || 'v';
   let start = 0;
-  const mk = await safe(() => S.B.get('meta/import'));
+  const mk = await safe(() => S.B.get(impPath(g)));
   if (mk && mk.version === ver && mk.n > 0 && mk.n < ops.length && !$('#impfresh').checked) start = mk.n;
   st.textContent = start ? `Tiếp tục từ bài ${start}/${ops.length}…` : `Đang nạp ${ops.length} bài…`;
   try {
-    await batchChunks(ops.slice(start), async n => { const k = start + n; st.textContent = `Đang nạp: ${k}/${ops.length} bài… (đừng đóng trang)`; await S.B.set('meta/import', {version: ver, n: k}) });
+    await batchChunks(ops.slice(start), async n => { const k = start + n; st.textContent = `Đang nạp: ${k}/${ops.length} bài… (đừng đóng trang)`; await S.B.set(impPath(g), {version: ver, n: k}) });
     const keepIds = new Set([...Object.keys(J.problems)]);
-    const old = S.idx ? allDangs(S.idx).flatMap(d=>d.items.map(it=>it[0])).filter(p=>!keepIds.has(p)) : [];
+    const old = S.idxs[g] ? allDangs(S.idxs[g]).flatMap(d=>d.items.map(it=>it[0])).filter(p=>!keepIds.has(p)) : [];
     if (old.length) { st.textContent = `Đang xoá ${old.length} bài cũ…`; await batchChunks(old.map(p=>({p:'problems/'+p, del:1}))) }
-    await S.B.set('meta/index', J.index);
-    await S.B.set('meta/import', {version: ver, n: ops.length});
-    st.textContent = `Xong: đã nạp đủ ${ops.length} bài.`; flash('Nạp dữ liệu thành công.'); checkCount();
+    await S.B.set(idxPath(g), J.index);
+    await S.B.set(impPath(g), {version: ver, n: ops.length});
+    st.textContent = `Xong: đã nạp đủ ${ops.length} bài cho lớp ${g}.`; flash('Nạp dữ liệu thành công.'); checkCount();
   } catch(e) {
     const c = (e && e.code) || '';
-    const cur = await safe(() => S.B.get('meta/import')); const k = cur && cur.n || start;
+    const cur = await safe(() => S.B.get(impPath(g))); const k = cur && cur.n || start;
     st.textContent = /resource-exhausted/.test(c)
       ? `Đã nạp ${k}/${ops.length} bài thì hết hạn mức ghi miễn phí trong ngày của Firebase. Ngày mai chọn lại file để nạp tiếp phần còn lại.`
       : `Dừng ở ${k}/${ops.length} bài (${c||e.message}). Chọn lại file để nạp tiếp từ chỗ dừng.`;
   } }
 async function checkCount(){ const el = $('#cnt'); if (!el || !S.B.count) return; el.textContent = 'Đang đếm…';
-  const n = await safe(() => S.B.count('problems')); const want = S.idx ? allDangs(S.idx).reduce((u,d)=>u+d.items.length,0) : 0;
-  if (n !== false) el.innerHTML = `Trên máy chủ có <b>${n}</b> bài${want?` / cần ${want}`:''}.${want && n < want ? ' Thiếu bài: chọn lại file để nạp tiếp.' : ''}` }
+  const n = await safe(() => S.B.count('problems')); const want = GRADES.reduce((u,g) => u + (S.idxs[g] ? allDangs(S.idxs[g]).reduce((v,d)=>v+d.items.length,0) : 0), 0);
+  if (n !== false) el.innerHTML = `Trên máy chủ có <b>${n}</b> bài${want?` / cần ${want} (tất cả các lớp)`:''}.${want && n < want ? ' Thiếu bài: chọn lại file để nạp tiếp.' : ''}` }
 async function applyBasic(n){
-  const idx = JSON.parse(JSON.stringify(S.idx)); flagIndex(idx, n);
-  const ops = []; allDangs(idx).forEach(d=>d.items.forEach(it=>ops.push({p:'problems/'+it[0], d:{basic:!!it[2]}, merge:1})));
+  const gs = GRADES.filter(g => S.idxs[g]), idxs = {}; const ops = [];
+  gs.forEach(g => { const idx = idxs[g] = JSON.parse(JSON.stringify(S.idxs[g])); flagIndex(idx, n); allDangs(idx).forEach(d=>d.items.forEach(it=>ops.push({p:'problems/'+it[0], d:{basic:!!it[2]}, merge:1}))) });
   note('Đang cập nhật Gói Cơ bản…', 1);
-  const ok = await safe(async () => { await batchChunks(ops, k => note(`Đang cập nhật: ${k}/${ops.length}…`, 1)); await S.B.set('meta/index', idx); await S.B.set('meta/config', {...S.cfg, basicN:n}); return true }, 'Không cập nhật được');
+  const ok = await safe(async () => { await batchChunks(ops, k => note(`Đang cập nhật: ${k}/${ops.length}…`, 1)); for (const g of gs) await S.B.set(idxPath(g), idxs[g]); await S.B.set('meta/config', {...S.cfg, basicN:n}); return true }, 'Không cập nhật được');
   if (ok) flash(`Đã áp dụng: Gói Cơ bản mở ${n} bài mỗi loại của từng dạng.`) }
+
+/* ---------------- soạn / sửa bài (Admin) ---------------- */
+const isAdminR = () => role() === 'admin';
+const AIKEY = 'ot9_ai';
+const aiCfg = () => { try { return JSON.parse(localStorage.getItem(AIKEY) || '{}') } catch(e) { return {} } };
+const aiOn = () => !!aiCfg().key;
+const IMGRE = /<img\s+src="([^"]+)"[^>]*>/g;
+const mEsc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const hDec = s => s.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;|&#x27;/g,"'").replace(/&nbsp;/g,' ').replace(/&amp;/g,'&');
+// HTML của web -> chữ để sửa: công thức thành $...$, ảnh thành [ảnh n]
+function h2t(h, E){
+  h = String(h||'').replace(IMGRE, (_, src) => { const n = ++E.ni; E.imgs[n] = src; return `[ảnh ${n}]` });
+  const parts = []; let last = 0;
+  h.replace(/\\\((.*?)\\\)/gs, (m, t, i) => { parts.push(hDec(h.slice(last, i).replace(/<br\s*\/?>/g,' '))); parts.push('$' + hDec(t).trim() + '$'); last = i + m.length });
+  parts.push(hDec(h.slice(last).replace(/<br\s*\/?>/g,' '))); return parts.join('') }
+function p2t(arr, E){ return (arr||[]).map(p => {
+  if (p.tb) return p.tb.map(r => '| ' + r.map(c => h2t(c, E)).join(' | ') + ' |').join('\n');
+  const t = h2t(p.h, E);
+  if (p.m && /^\$[^$]*\$$/.test(t.trim())) return '$' + t.trim() + '$';
+  return t }).join('\n') }
+// chữ -> HTML: $..$, $$..$$, \(..\), \[..\] là công thức; **đậm**; [ảnh n] là hình
+function t2h(s, E){
+  let out = '', last = 0; const re = /\$\$([\s\S]+?)\$\$|\$([^$]+?)\$|\\\(([\s\S]+?)\\\)|\\\[([\s\S]+?)\\\]/g; let m;
+  const txt = x => x.replace(/&(?![a-z]+;|#\d+;)/gi,'&amp;').replace(/<(?!\/?(b|i|u|sup|sub|br)\b)/gi,'&lt;').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>')
+    .replace(/\[ảnh (\d+)\]/g, (k, n) => E.imgs[n] ? `<img src="${E.imgs[n]}" alt="Hình vẽ" loading="lazy">` : k);
+  while ((m = re.exec(s))) { out += txt(s.slice(last, m.index)); out += '\\(' + mEsc((m[1]||m[2]||m[3]||m[4]).trim()) + '\\)'; last = re.lastIndex }
+  return out + txt(s.slice(last)) }
+function t2p(s, E){ const L = String(s||'').replace(/\r/g,'').split('\n'), out = []; let tb = null;
+  for (let ln of L) { const x = ln.trim();
+    if (/^\|.*\|$/.test(x)) { const row = x.slice(1,-1).split('|').map(c => t2h(c.trim(), E)); if (row.every(c => /^:?-{2,}:?$/.test(c))) continue; (tb = tb || []).push(row); continue }
+    if (tb) { out.push({tb}); tb = null }
+    if (!x) continue;
+    const dm = x.match(/^\$\$([\s\S]+)\$\$$/) || x.match(/^\\\[([\s\S]+)\\\]$/);
+    if (dm && !/\$\$/.test(dm[1])) { out.push({m:1, h:'\\(' + mEsc(dm[1].trim()) + '\\)'}); continue }
+    if (/^\[ảnh \d+\]$/.test(x)) { out.push({f:1, h:t2h(x, E)}); continue }
+    out.push({h:t2h(x, E)}) }
+  if (tb) out.push({tb}); return out }
+const t1 = (s, E) => t2p(s, E).map(p => p.h || '').join('<br>');
+const cleanOpt = h => String(h||'').replace(/<\/?b>/g,'').trim().replace(/^[.:]\s*/,'').replace(/\s*\.$/,'');
+
+function newEd(o){ return {imgs:{}, ni:0, f:{}, ans:'', dsk:['','','',''], lv:'NB', src:'', pm: aiOn() ? 'ocr' : 'img', ...o} }
+async function openEditor(pid){
+  const m = S.P[pid]; if (!m) return;
+  note('Đang mở bài để sửa…', 1);
+  const P = await safe(() => S.B.get('problems/' + pid), 'Không mở được bài'); note('');
+  if (!P) return;
+  const E = newEd({pid, k:m.k, t:m.t, bai:m.bai||null, d:m.d, y:m.y, lv:P.lv || m.lv || 'NB', src:P.src||''});
+  E.f.st = p2t(P.st, E); E.f.so = p2t(P.so, E);
+  if (m.y === 'mc') { (P.opts||[]).forEach((o,i) => E.f['o'+i] = h2t(cleanOpt(o.h), E)); E.ans = P.ans || '' }
+  if (m.y === 'ds') { (P.items||[]).forEach((o,i) => E.f['i'+i] = h2t(o.h, E)); E.dsk = [0,1,2,3].map(i => (P.ans||'')[i] || '') }
+  if (m.y === 'tln') E.f.tans = h2t(P.ans || '', E);
+  S.ed = E; render(); scrollTo(0,0) }
+function addEditor(did, y){
+  const d = anyDang(did); let t = null, bai = null, k = 'tl';
+  for (const T of (S.idx.topics||[])) if (T.dangs.includes(d)) t = T.id;
+  for (const C of (S.idx.tn||[])) for (const B of C.bais) if (B.dangs.includes(d)) { k = 'tn'; t = C.id; bai = B.id }
+  S.ed = newEd({pid:null, k, t, bai, d:did, y}); S.pid = null; render(); scrollTo(0,0) }
+
+const edField = (name, label, rows, help) => { const E = S.ed;
+  return `<div class="edf"><div class="row sp"><label for="ef_${name}"><b>${label}</b></label><span class="edtool"><button type="button" class="btn sm" data-edimg="${name}">🖼 Chèn hình</button>${aiOn()?`<button type="button" class="btn sm" data-edocr="${name}">🔤 Ảnh → chữ</button>`:''}</span></div>
+  ${help?`<p class="hint">${help}</p>`:''}<textarea id="ef_${name}" data-ef="${name}" rows="${rows}" spellcheck="false">${esc(E.f[name]||'')}</textarea><div class="edpv pq" data-pv="${name}">${pvHTML(name)}</div></div>` };
+function pvHTML(name){ const E = S.ed, v = E.f[name] || ''; if (!v.trim()) return '<span class="hint">Xem trước…</span>';
+  return /^(o|i)\d$|^tans$/.test(name) ? `<p>${M(t1(v, E))}</p>` : paras(t2p(v, E)) }
+function edDraw(){
+  const E = S.ed, d = anyDang(E.d), y = E.y;
+  const where = E.k === 'tn' ? `${esc(baiById(E.bai).name)} · ${M(esc(d.name))}` : `${esc(topicById(E.t).name)} · ${M(d.name)}`;
+  let extra = '';
+  if (y === 'mc') extra = ['A','B','C','D'].map((k,i) => edField('o'+i, 'Phương án ' + k, 2)).join('') +
+    `<div class="edf"><b>Đáp án đúng</b><div class="seg" role="group">${['A','B','C','D'].map(k => `<button type="button" data-edkey="${k}" aria-pressed="${E.ans===k}">${k}</button>`).join('')}</div></div>`;
+  if (y === 'ds') extra = ['a','b','c','d'].map((k,i) => edField('i'+i, 'Ý ' + k + ')', 2) + `<div class="seg" role="group" style="margin-top:-4px">${['Đ','S'].map(v => `<button type="button" data-edds="${i}" data-edv="${v}" aria-pressed="${E.dsk[i]===v}">${v==='Đ'?'Đúng':'Sai'}</button>`).join('')}</div>`).join('');
+  if (y === 'tln') extra = edField('tans', 'Đáp án (để chấm tự động)', 1, 'Ví dụ: 3 &nbsp;·&nbsp; 1,5 &nbsp;·&nbsp; $\\frac{2}{3}$');
+  const ocrAll = aiOn() ? `<div class="card edall"><b>Dán ảnh cả câu để tự điền</b><p class="hint">Chụp màn hình cả câu (đề${y==='tl'?'':', phương án'}, lời giải nếu có), bấm vào ô dưới rồi Ctrl+V. AI sẽ điền vào các ô, bạn kiểm tra lại trước khi lưu.</p><textarea id="edall" rows="2" placeholder="Bấm vào đây rồi Ctrl+V ảnh cả câu…"></textarea><div class="row" style="margin-top:6px"><button type="button" class="btn sm" data-edocr="*">Hoặc chọn ảnh từ máy</button></div></div>`
+    : `<p class="hint">Muốn dán ảnh tự chuyển thành chữ và công thức: vào <b>Gói & dữ liệu → Nhận dạng ảnh (AI)</b> để nhập khoá AI.</p>`;
+  const paste = `<div class="row"><span class="hint">Khi dán ảnh (Ctrl+V) vào một ô:</span><div class="seg" role="group" style="margin:0"><button type="button" data-edpm="img" aria-pressed="${!(E.pm==='ocr')}">Chèn làm hình</button><button type="button" data-edpm="ocr" aria-pressed="${E.pm==='ocr'}" ${aiOn()?'':'disabled title="Cần khoá AI"'}>Chuyển thành chữ (AI)</button></div></div>`;
+  const lv = E.k === 'tn' ? `<div class="row"><label for="edlv"><b>Mức độ</b></label><select id="edlv" style="width:auto">${Object.entries(LVN).map(([k,v]) => `<option value="${k}" ${E.lv===k?'selected':''}>${v}</option>`).join('')}</select></div>` : '';
+  const box = $('#edbox'); if (!box) return;
+  box.innerHTML = `<div class="row sp"><button class="btn sm" data-edcancel>← Huỷ, không lưu</button><span class="src">${where}</span></div>
+   <h1 style="margin-top:14px">${E.pid ? 'Sửa ' + label(E.pid) : 'Thêm ' + (E.k==='tn'?'câu ':'bài ') + TYPEN[y].toLowerCase()}<span class="tag ${isTN(y)?'tn':''}">${TYPEN[y]}</span></h1>
+   <details class="ex"><summary>Cách gõ</summary><ul class="steps"><li>Mỗi dòng là một đoạn. Công thức gõ LaTeX trong <code>$...$</code>, ví dụ <code>$x^2-5x+6=0$</code>, <code>$\\sqrt{x}$</code>, <code>$\\frac{a}{b}$</code>. Dòng chỉ có <code>$$...$$</code> là công thức đứng riêng.</li><li>Chữ đậm: <code>**Chọn D**</code>. Bảng: mỗi hàng một dòng dạng <code>| x | 1 | 2 |</code>.</li><li>Dán văn bản có LaTeX (từ ChatGPT, Mathpix, …) vào thẳng ô. Dán ảnh: chọn bên dưới là chèn làm hình vẽ hay chuyển thành chữ.</li><li><code>[ảnh 3]</code> là chỗ đặt hình; xoá dòng đó là bỏ hình.</li></ul></details>
+   ${ocrAll}${paste}${lv}
+   ${edField('st', 'Đề bài', 6)}${extra}${edField('so', 'Lời giải', 8)}
+   <div class="edf"><label for="edsrc"><b>Nguồn</b> <span class="hint">(không bắt buộc)</span></label><input type="text" id="edsrc" value="${esc(E.src)}"></div>
+   <div class="row" style="margin-top:16px"><button class="btn pri" data-edsave>💾 Lưu bài</button><button class="btn" data-edcancel>Huỷ</button><span id="edst" class="hint"></span></div>
+   <input type="file" id="edfile" accept="image/*" hidden>` }
+let pvT = {};
+function edInput(name, v){ S.ed.f[name] = v; clearTimeout(pvT[name]); pvT[name] = setTimeout(() => { const el = document.querySelector(`[data-pv="${name}"]`); if (el && S.ed) el.innerHTML = pvHTML(name) }, 250) }
+function insAt(name, str){ const ta = document.querySelector(`[data-ef="${name}"]`); if (!ta) return;
+  const a = ta.selectionStart ?? ta.value.length, b = ta.selectionEnd ?? a;
+  const pre = a && ta.value[a-1] !== '\n' && /^\[ảnh|\n/.test(str) ? '\n' : '';
+  ta.setRangeText(pre + str, a, b, 'end'); edInput(name, ta.value); ta.focus() }
+
+// ảnh: thu nhỏ để lưu (webp) hoặc để gửi AI (jpeg)
+function loadImg(file){ return new Promise((ok, no) => { const u = URL.createObjectURL(file), im = new Image(); im.onload = () => { ok(im); URL.revokeObjectURL(u) }; im.onerror = no; im.src = u }) }
+function shrink(im, maxW, type, q){ const k = Math.min(1, maxW / im.naturalWidth); const c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth*k); c.height = Math.round(im.naturalHeight*k);
+  const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0,0,c.width,c.height); g.drawImage(im, 0, 0, c.width, c.height); return c.toDataURL(type, q) }
+async function edImage(file, name, mode){
+  const st = $('#edst'); let im; try { im = await loadImg(file) } catch(e) { note('Không đọc được ảnh.'); return }
+  if (mode !== 'ocr') { const E = S.ed, n = ++E.ni; E.imgs[n] = shrink(im, 1000, 'image/webp', 0.82); insAt(name, `[ảnh ${n}]\n`); return }
+  const url = shrink(im, 1800, 'image/jpeg', 0.9);
+  const box = name === '*' ? $('#edall') : document.querySelector(`[data-pv="${name}"]`);
+  const msg = t => { if (st) st.textContent = t; if (box && name === '*') box.placeholder = t };
+  msg('Đang nhận dạng ảnh…');
+  try {
+    if (name === '*') { fillAll(await aiRead(url, true)); msg('Đã điền từ ảnh. Kiểm tra lại rồi bấm Lưu.') }
+    else { insAt(name, (await aiRead(url, false)).trim() + '\n'); msg('Đã chuyển ảnh thành chữ.') }
+  } catch(e) { console.error(e); msg(''); note('Nhận dạng ảnh không được: ' + (e.message || e)) } }
+
+const OCR_TXT = `Chép lại CHÍNH XÁC nội dung toán học trong ảnh (tiếng Việt), không giải, không thêm lời.
+Quy tắc: mỗi đoạn/câu một dòng; mọi công thức, kí hiệu, số trong công thức viết LaTeX đặt trong $...$; công thức đứng riêng một dòng viết $$...$$; chữ đậm viết **...**; bảng viết mỗi hàng một dòng dạng | ô | ô |; chỗ có hình vẽ ghi [HÌNH]. Không dùng khối \`\`\`.`;
+const OCR_ALL = y => `Ảnh là một câu/bài toán lớp 9 (tiếng Việt). Trả về DUY NHẤT một đối tượng JSON, không giải thích, theo mẫu:
+{"de": "đề bài", ${y==='mc'?'"phuong_an": ["nội dung A","nội dung B","nội dung C","nội dung D"], "dap_an": "A|B|C|D hoặc rỗng", ':y==='ds'?'"y": ["ý a","ý b","ý c","ý d"], "dap_an": "chuỗi 4 kí tự Đ/S, ví dụ ĐSĐĐ, hoặc rỗng", ':y==='tln'?'"dap_an": "kết quả số hoặc rỗng", ':''}"loi_giai": "lời giải nếu có trong ảnh, không có thì rỗng"}
+Trong mỗi chuỗi: xuống dòng bằng \\n giữa các đoạn; công thức viết LaTeX trong $...$ (nhớ nhân đôi dấu \\ cho đúng JSON); chữ đậm **...**; chỗ có hình vẽ ghi [HÌNH]. Phương án không kèm chữ "A." đầu dòng. Chép đúng như ảnh, không tự giải.`;
+async function aiRead(dataUrl, all){
+  const c = aiCfg(); if (!c.key) throw new Error('chưa nhập khoá AI');
+  const b64 = dataUrl.split(',')[1], prompt = all ? OCR_ALL(S.ed.y) : OCR_TXT; let txt = '';
+  if (c.prov === 'claude') {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {method:'POST', headers:{'content-type':'application/json','x-api-key':c.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify({model: c.model || 'claude-sonnet-5-5', max_tokens: 4096, messages:[{role:'user', content:[{type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}}, {type:'text', text:prompt}]}]})});
+    const j = await r.json(); if (!r.ok) throw new Error((j.error && j.error.message) || r.status); txt = (j.content||[]).map(x=>x.text||'').join('');
+  } else {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(c.model || 'gemini-flash-latest')}:generateContent`, {method:'POST', headers:{'content-type':'application/json','x-goog-api-key':c.key},
+      body: JSON.stringify({contents:[{parts:[{text:prompt}, {inline_data:{mime_type:'image/jpeg', data:b64}}]}], generationConfig:{temperature:0, ...(all?{responseMimeType:'application/json'}:{})}})});
+    const j = await r.json(); if (!r.ok) throw new Error((j.error && j.error.message) || r.status);
+    txt = ((j.candidates||[])[0]?.content?.parts||[]).map(x=>x.text||'').join('') }
+  txt = txt.replace(/^\s*```[a-z]*\s*|\s*```\s*$/g, '');
+  if (!all) return txt;
+  const a = txt.indexOf('{'), b = txt.lastIndexOf('}'); return JSON.parse(txt.slice(a, b+1)) }
+function fillAll(J){ const E = S.ed, s = v => String(v ?? '').trim();
+  if (s(J.de)) E.f.st = s(J.de); if (s(J.loi_giai)) E.f.so = s(J.loi_giai);
+  if (E.y === 'mc' && Array.isArray(J.phuong_an)) { J.phuong_an.slice(0,4).forEach((v,i) => E.f['o'+i] = s(v).replace(/^\*{0,2}[A-D][.):]\*{0,2}\s*/,'')); if (/^[A-D]$/.test(s(J.dap_an).toUpperCase())) E.ans = s(J.dap_an).toUpperCase() }
+  if (E.y === 'ds' && Array.isArray(J.y)) { J.y.slice(0,4).forEach((v,i) => E.f['i'+i] = s(v).replace(/^\*{0,2}[a-d][.)]\*{0,2}\s*/,'')); const k = s(J.dap_an).toUpperCase().replace(/D/g,'Đ'); if (/^[ĐS]{4}$/.test(k)) E.dsk = [...k] }
+  if (E.y === 'tln' && s(J.dap_an)) E.f.tans = s(J.dap_an);
+  edDraw() }
+
+// lưu: ghi bài + cập nhật mục lục + bài giao đang có câu này
+const cloneIdx = () => JSON.parse(JSON.stringify(S.idx));
+const gOfEd = () => S.grade;
+const findDang = (idx, id) => allDangs(idx).find(d => d.id === id);
+function reflag(d, n){ const c = {}, ch = []; for (const it of d.items) { c[it[1]] = c[it[1]] || 0; const v = c[it[1]] < n ? 1 : 0; if (v !== it[2]) ch.push(it[0]); it[2] = v; c[it[1]]++ } return ch }
+async function saveEditor(){
+  const E = S.ed, st = $('#edst'), y = E.y;
+  const doc = {t:E.t, d:E.d, y, src:E.src.trim(), st:t2p(E.f.st, E), so:t2p(E.f.so, E)};
+  if (!doc.st.length) { note('Đề bài đang trống.'); return }
+  if (E.k === 'tn') { doc.bai = E.bai; doc.lv = E.lv }
+  if (y === 'mc') { doc.opts = ['A','B','C','D'].map((k,i) => ({k, h:t1(E.f['o'+i]||'', E)})); if (doc.opts.some(o => !o.h)) { note('Cần nhập đủ 4 phương án.'); return } doc.ans = E.ans || '' }
+  if (y === 'ds') { doc.items = ['a','b','c','d'].map((k,i) => ({k, h:t1(E.f['i'+i]||'', E)})); if (doc.items.some(o => !o.h)) { note('Cần nhập đủ 4 ý.'); return } doc.ans = E.dsk.every(v=>v) ? E.dsk.join('') : '' }
+  if (y === 'tln') { const v = (E.f.tans||'').trim(); doc.ans = v ? (/\$|\\\(/.test(v) ? t1(v, E) : '\\(' + mEsc(v) + '\\)') : '' }
+  const size = new Blob([JSON.stringify(doc)]).size; if (size > 900000) { note(`Bài quá nặng (${Math.round(size/1024)} KB, tối đa khoảng 900 KB). Bớt hoặc thu nhỏ hình.`); return }
+  const idx = cloneIdx(), d = findDang(idx, E.d); let pid = E.pid, it;
+  if (pid) it = d.items.find(x => x[0] === pid);
+  else { pid = E.d + 'n' + Date.now().toString(36); it = E.k === 'tn' ? [pid, y, 0, E.lv] : [pid, y, 0]; d.items.push(it) }
+  if (E.k === 'tn') it[3] = E.lv;
+  reflag(d, S.cfg.basicN); doc.basic = !!it[2];
+  if (st) st.textContent = 'Đang lưu…';
+  const ok = await safe(async () => {
+    const ops = [{p:'problems/'+pid, d:doc}];
+    S.asg.filter(a => (a.pids||[]).includes(pid)).forEach(a => ops.push({p:`assignments/${a.id}/items/${pid}`, d:doc}));
+    await batchChunks(ops); await S.B.set(idxPath(gOfEd()), idx); return true }, 'Không lưu được bài');
+  if (!ok) { if (st) st.textContent = ''; return }
+  Object.keys(S.cache).filter(k => k.endsWith('/'+pid)).forEach(k => delete S.cache[k]); S.cache['/'+pid] = {id:pid, ...doc};
+  S.ed = null; S.idx = S.idxs[S.grade] = idx; S.P[pid] = E.k === 'tn' ? {g:S.grade, k:'tn', t:E.t, bai:E.bai, d:E.d, y, basic:doc.basic, lv:E.lv} : {g:S.grade, k:'tl', t:E.t, d:E.d, y, basic:doc.basic};
+  flash(E.pid ? 'Đã lưu bài.' : 'Đã thêm bài mới.'); openPid(pid) }
+async function deleteProblem(pid){
+  const m = S.P[pid]; if (!m) return;
+  const idx = JSON.parse(JSON.stringify(S.idxs[m.g])), d = findDang(idx, m.d); d.items = d.items.filter(x => x[0] !== pid);
+  const ch = reflag(d, S.cfg.basicN);
+  const ops = [{p:'problems/'+pid, del:1}, ...ch.map(p => ({p:'problems/'+p, d:{basic: !!d.items.find(x=>x[0]===p)[2]}, merge:1}))];
+  const asg = S.asg.filter(a => (a.pids||[]).includes(pid));
+  asg.forEach(a => ops.push({p:`assignments/${a.id}/items/${pid}`, del:1}));
+  const ok = await safe(async () => { await batchChunks(ops); for (const a of asg) await S.B.update('assignments/'+a.id, {pids: a.pids.filter(p => p !== pid)}); await S.B.set(idxPath(m.g), idx); return true }, 'Không xoá được bài');
+  if (ok) { S.pid = null; flash('Đã xoá bài.' + (asg.length ? ` Đã bỏ khỏi ${asg.length} bài giao.` : '')); render() } }
+function aiCard(){ const c = aiCfg();
+  return `<div class="card"><h3>Nhận dạng ảnh (AI)</h3><p class="hint">Dùng khi soạn bài: dán ảnh là tự chuyển thành chữ và công thức LaTeX. Khoá chỉ lưu trong trình duyệt của máy này, không gửi lên máy chủ.</p>
+   <form id="aif"><div class="row"><label for="aiprov">Dịch vụ</label><select id="aiprov" style="width:auto"><option value="gemini" ${c.prov!=='claude'?'selected':''}>Google Gemini (có gói miễn phí)</option><option value="claude" ${c.prov==='claude'?'selected':''}>Claude (Anthropic)</option></select></div>
+   <div class="row" style="margin-top:8px"><input type="text" id="aikey" placeholder="Dán khoá API" value="${esc(c.key||'')}" autocomplete="off" style="flex:1 1 280px"><input type="text" id="aimodel" placeholder="Model (để trống = mặc định)" value="${esc(c.model||'')}" style="flex:0 1 240px"></div>
+   <div class="row" style="margin-top:8px"><button class="btn sm pri">Lưu khoá</button>${c.key?'<button type="button" class="btn sm red" data-aidel>Xoá khoá</button>':''}<span class="hint">${c.key?'Đã có khoá.':'Chưa có khoá.'} Khoá Gemini lấy miễn phí tại aistudio.google.com → Get API key.</span></div></form></div>` }
 
 /* ---------------- tray ---------------- */
 function renderTray(){ if (!isStaff() || !S.sel.size || curView()==='giao') { $('#tray').innerHTML = ''; return }
@@ -660,13 +1044,26 @@ function renderTray(){ if (!isStaff() || !S.sel.size || curView()==='giao') { $(
 
 /* ---------------- events ---------------- */
 const anyDang = id => allDangs(S.idx).find(d => d.id === id);
-function openPid(pid){ const m = S.P[pid]; S.pid = pid; S.openSol = false; if (m) { if (m.k === 'tn') { S.ch = m.t; S.bai = m.bai; S.ttyp = m.y } else { S.topic = m.t; S.dang = m.d } } render(); scrollTo(0,0) }
+function openPid(pid){ const m = S.P[pid]; if (m && m.g !== S.grade) { S.grade = m.g; S.idx = S.idxs[m.g] || null } S.pid = pid; S.openSol = false; if (m) { if (m.k === 'tn') { S.ch = m.t; S.bai = m.bai; S.ttyp = m.y } else { S.topic = m.t; S.dang = m.d } } render(); scrollTo(0,0) }
 document.addEventListener('click', async e => {
   const t = e.target.closest('button'); if (!t) return; const D = t.dataset;
+  if (S.ed && !t.closest('#edbox') && !('signout' in D)) { if (!confirm('Bỏ bài đang soạn (chưa lưu)?')) return; S.ed = null }
+  if ('edcancel' in D) { const p = S.ed && S.ed.pid; S.ed = null; if (p) openPid(p); else render(); return }
+  if ('edsave' in D) { t.disabled = true; await saveEditor(); t.disabled = false; return }
+  if (D.edimg || D.edocr) { S._edT = {name: D.edimg || D.edocr, mode: D.edimg ? 'img' : 'ocr'}; const f = $('#edfile'); f.value = ''; f.click(); return }
+  if (D.edkey) { S.ed.ans = S.ed.ans === D.edkey ? '' : D.edkey; t.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.edkey === S.ed.ans)); return }
+  if (D.edds) { const i = +D.edds; S.ed.dsk[i] = D.edv; t.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); return }
+  if (D.edpm) { S.ed.pm = D.edpm; t.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); return }
+  if (D.pedit) { openEditor(D.pedit); return }
+  if (D.padd) { addEditor(D.padd, D.ptyp); return }
+  if (D.pdel) { if (!t.dataset.sure) { t.dataset.sure = 1; t.textContent = 'Bấm lần nữa để xoá hẳn'; setTimeout(()=>{ if (t.isConnected) { delete t.dataset.sure; t.textContent = '🗑 Xoá bài' } }, 4000); return }
+    t.disabled = true; await deleteProblem(D.pdel); return }
+  if ('aidel' in D) { localStorage.removeItem(AIKEY); render(); return }
   if ('signin' in D) { safe(() => S.B.signIn(), 'Đăng nhập không thành công'); return }
   if ('signout' in D) { await S.B.signOut(); location.hash = ''; return }
   if (D.rr) { t.parentNode.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', b===t)); $('#rcwrap').style.display = D.rr==='student' ? '' : 'none'; return }
   if (D.go) { go(D.go); return }
+  if (D.grade) { setGrade(D.grade); return }
   if (D.topic) { S.topic = D.topic; S.dang = null; S.pid = null; render(); scrollTo(0,0); return }
   if ('alltopics' in D) { S.topic = null; S.pid = null; render(); return }
   if (D.dang) { S.dang = D.dang; S.pid = null; render(); scrollTo(0,0); return }
@@ -713,7 +1110,18 @@ document.addEventListener('change', e => { const t = e.target;
   if (t.id === 'tcls') { S.trackCls = t.value; S.trackAsg = null; render() }
   if (t.id === 'tasg') { S.trackAsg = t.value; render() }
   if (t.id === 'imp' && t.files[0]) importData(t.files[0]);
+  if (t.id === 'edfile' && t.files[0] && S._edT) edImage(t.files[0], S._edT.name, S._edT.mode);
+  if (t.id === 'edlv' && S.ed) S.ed.lv = t.value;
 });
+document.addEventListener('paste', e => { if (!S.ed || !e.target.closest) return; const ta = e.target.closest('[data-ef],#edall'); if (!ta) return;
+  const cd = e.clipboardData; if (!cd) return; const it = [...cd.items].find(i => i.kind === 'file' && i.type.startsWith('image/'));
+  if (ta.id === 'edall') { e.preventDefault(); if (it) edImage(it.getAsFile(), '*', 'ocr'); return }
+  if (!it || cd.getData('text/plain').trim()) return;
+  e.preventDefault(); edImage(it.getAsFile(), ta.dataset.ef, S.ed.pm === 'ocr' && aiOn() ? 'ocr' : 'img') });
+document.addEventListener('input', e => { const x = e.target;
+  if (S.ed && x.dataset && x.dataset.ef) { edInput(x.dataset.ef, x.value); return }
+  if (S.ed && x.id === 'edsrc') { S.ed.src = x.value; return }
+  if (x.id === 'edall') { x.value = ''; return } });
 document.addEventListener('input', e => { if (e.target.id === 'uq') { S.q = e.target.value; clearTimeout(S._qt); S._qt = setTimeout(() => { render(); const i = $('#uq'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length) } }, 300) } });
 document.addEventListener('submit', async e => { e.preventDefault(); const f = e.target;
   if (f.id === 'regf') {
@@ -724,23 +1132,27 @@ document.addEventListener('submit', async e => { e.preventDefault(); const f = e
   if (f.id === 'clsjoin') { const c = await safe(() => findClass($('#rc2').value)); if (!c) { note('Mã lớp không đúng.'); return }
     await safe(() => S.B.update('users/'+S.au.uid, {classId:c.id, teacherUid:c.teacherUid}), 'Không cập nhật được'); flash('Đã gửi yêu cầu vào lớp ' + c.name + '.'); return }
   if (f.id === 'newcls') { const name = $('#cn').value.trim(); if (!name) return; const id = 'c' + Date.now().toString(36);
-    if (await safe(() => S.B.set('classes/'+id, {name, code: genCode(), teacherUid: S.au.uid, at: Date.now()}), 'Không tạo được lớp') !== false) flash('Đã tạo lớp ' + name + '.'); return }
+    if (await safe(() => S.B.set('classes/'+id, {name, grade: +$('#cg').value, code: genCode(), teacherUid: S.au.uid, at: Date.now()}), 'Không tạo được lớp') !== false) flash('Đã tạo lớp ' + name + '.'); return }
   if (f.id === 'asgf') { saveAssign(f); return }
   if (f.id === 'tlnf') { const v = $('#tlnv').value.trim(); if (!v) return; const P = S.cache[(S.asgId||'')+'/'+S.pid];
     const rec = {a: v}; if (P.ans) { rec.s = normAns(v) === normAns(P.ans) ? 1 : 3; record(S.pid, rec) } else { S.prog.done = S.prog.done||{}; S.prog.done[S.pid] = {a:v, s:0} } loadProb(); return }
+  if (f.id === 'aif') { const key = $('#aikey').value.trim(); localStorage.setItem(AIKEY, JSON.stringify({prov: $('#aiprov').value, key, model: $('#aimodel').value.trim()})); flash(key ? 'Đã lưu khoá AI trên máy này.' : 'Đã xoá khoá.'); render(); return }
   if (f.id === 'planf') { const n = Math.max(0, Math.min(300, parseInt($('#bn').value,10) || 0)); applyBasic(n); return }
 });
 
 /* ---------------- session ---------------- */
 function unsub(){ S.subs.forEach(u => { try { u() } catch(e){} }); S.subs = [] }
+function rebuildP(){ S.P = {};
+  for (const g of GRADES) { const d = S.idxs[g]; if (!d) continue;
+    for (const t of (d.topics||[])) for (const dg of t.dangs) for (const it of dg.items) S.P[it[0]] = {g, k:'tl', t:t.id, d:dg.id, y:it[1], basic:!!it[2]};
+    for (const c of (d.tn||[])) for (const b of c.bais) for (const dg of b.dangs) for (const it of dg.items) S.P[it[0]] = {g, k:'tn', t:c.id, bai:b.id, d:dg.id, y:it[1], basic:!!it[2], lv:it[3]||null} } }
 function startSession(){
   unsub(); const B = S.B, uid = S.au.uid, r = role();
-  S.subs.push(B.watch('meta/index', d => { S.idx = d; S.P = {}; if (d) { for (const t of d.topics) for (const dg of t.dangs) for (const it of dg.items) S.P[it[0]] = {k:'tl', t:t.id, d:dg.id, y:it[1], basic:!!it[2]};
-    for (const c of (d.tn||[])) for (const b of c.bais) for (const dg of b.dangs) for (const it of dg.items) S.P[it[0]] = {k:'tn', t:c.id, bai:b.id, d:dg.id, y:it[1], basic:!!it[2], lv:it[3]||null} } render() }));
+  GRADES.forEach(g => S.subs.push(B.watch(idxPath(g), d => { S.idxs[g] = d; rebuildP(); S.idx = S.idxs[S.grade] || null; render() })));
   S.subs.push(B.watch('meta/config', d => { S.cfg = {basicN:5, ...(d||{})}; render() }));
   if (r === 'student') {
     S.subs.push(B.watch('progress/'+uid, d => { if (!S.prog || !d || (d.upd||0) >= (S.prog.upd||0)) S.prog = d || {done:{}}; render() }));
-    if (S.me.classId) { S.subs.push(B.watch('classes/'+S.me.classId, d => { S.myClass = d; render() }));
+    if (S.me.classId) { S.subs.push(B.watch('classes/'+S.me.classId, d => { S.myClass = d; if (d && d.grade && !savedGrade()) { S.grade = +d.grade; S.idx = S.idxs[S.grade] || null } render() }));
       S.subs.push(B.watchQ('assignments', [['classId','==',S.me.classId]], l => { S.asg = l; render() })) }
   } else {
     S.prog = {done:{}};
@@ -751,7 +1163,7 @@ function startSession(){
   }
 }
 async function onUser(au){
-  unsub(); S.au = au; S.me = null; S.idx = null; S.prog = null; S.asg = []; S.users = []; S.classes = [];
+  unsub(); S.au = au; S.me = null; S.idx = null; S.idxs = {}; S.prog = null; S.asg = []; S.users = []; S.classes = [];
   if (!au) { render(); return }
   $('#app').innerHTML = wrap1('<p class="empty">Đang kiểm tra tài khoản…</p>');
   if (isAdminEmail(au.email)) {
