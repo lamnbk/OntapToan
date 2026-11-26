@@ -358,6 +358,12 @@ table{font-size:14px}th{font-weight:600}
  body{background:#fff;color:#000;font-size:13pt}
  .sol{background:#fff;border-left:2px solid #999}
 }
+.tgrp{font-size:15px;font-weight:700;color:var(--mut);margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.tgrp:first-of-type{margin-top:16px}
+.dgrp{margin:14px 6px 4px;font-size:12.5px;font-weight:700;color:var(--blue);line-height:1.35}
+.side .dgrp:first-of-type{margin-top:6px}
+details.lt{margin:10px 0 4px}details.lt summary{font-weight:600}
+@media(max-width:900px){.dgrp{flex:none;align-self:center;margin:0 4px;max-width:140px}}
 
 </style>
 </head>
@@ -490,7 +496,7 @@ function label(pid){ const m = S.P[pid]; if (!m) return pid; const I = idxOfM(m)
   const gl = m.g !== S.grade ? `L${m.g} · ` : '';
   if (m.k === 'doc') { const D = docById(m.t, I); return `${gl}${D.title} · Câu ${docItems(D).findIndex(x => x[0] === pid) + 1}` }
   if (m.k === 'tn') { const b = baiById(m.bai, I), c = chById(m.t, I); return `${gl}C${I.tn.indexOf(c)+1} · Bài ${b.no} · D${b.dangs.indexOf(d)+1} · ${TYPES[m.y]} ${k}` }
-  const t = topicById(m.t, I); return `${gl}${shortOf(t, I)} · D${t.dangs.indexOf(d)+1} · TL ${k}` }
+  const t = topicById(m.t, I); return `${gl}${shortOf(t, I)} · D${t.dangs.indexOf(d)+1} · Bài ${d.items.findIndex(x=>x[0]===pid)+1}` }
 function setGrade(g){ g = +g; if (!GRADES.includes(g)) return; S.grade = g; S.idx = S.idxs[g] || null;
   S.topic = S.dang = S.ch = S.bai = S.pid = S.doc = null; S.dall = false; S.ed = S.sf = S.imp = null; try { localStorage.setItem('ot_grade', g) } catch(e) {} render(); scrollTo(0,0) }
 const hasData = g => !!(S.idxs[g] && (S.idxs[g].topics||[]).length + (S.idxs[g].tn||[]).length);
@@ -586,22 +592,33 @@ function renderLearn(){
   if (busy() && (!S.topic || !topicById(S.topic))) { $('#app').innerHTML = wrap1('<div class="paper" id="edbox"></div>', 1000); panelDraw(); return }
   if (S.topic && !topicById(S.topic)) S.topic = null;
   if (!S.topic){
-    const cards = S.idx.topics.map((t,i) => { const its = t.dangs.flatMap(d=>d.items); const tn = 0;
+    const cards = S.idx.topics.map((t,i) => { i = S.idx.topics.filter((x, k) => k < i && (x.grp||'') === (t.grp||'')).length; const its = t.dangs.flatMap(d=>d.items); const tn = 0;
       const done = staff ? 0 : its.filter(x=>stat(S.prog,x[0])).length;
       return `<button class="tc" data-topic="${t.id}"><span class="no">Chủ đề ${i+1}</span><b>${esc(t.name)}</b><small>${t.dangs.length} dạng · ${its.length} bài tự luận${staff?'':' · đã làm '+done}</small>${staff?'':`<div class="meter"><i style="width:${its.length?done/its.length*100:0}%"></i></div>`}</button>` }).join('');
     const plan = staff ? '' : `<p class="hint">${isFull()?'Bạn đang dùng <b>Gói Full</b>: mở toàn bộ bài tập.':`Bạn đang dùng <b>Gói Cơ bản</b>: mở ${S.cfg.basicN} bài đầu mỗi loại của từng dạng, cùng các bài được giao. Liên hệ Admin để nâng cấp Gói Full.`}</p>`;
-    $('#app').innerHTML = wrap1(`<div class="paper"><div class="row sp"><div><div class="kick">Toán ${S.grade}</div><h1>${staff?'Kho bài tự luận':'Tự luận theo chủ đề'}</h1></div>${isAdminR()?'<button class="btn pri" data-sfnew="topic">+ Thêm chủ đề</button>':''}</div>${plan}<div class="topics">${cards}</div></div>`, 1300); return }
+    $('#app').innerHTML = wrap1(`<div class="paper"><div class="row sp"><div><div class="kick">Toán ${S.grade}</div><h1>${staff?'Kho bài tự luận':'Tự luận theo chủ đề'}</h1></div>${isAdminR()?'<button class="btn pri" data-sfnew="topic">+ Thêm chủ đề</button>':''}</div>${plan}${topicGroups(cards)}</div>`, 1300); return }
   const T = topicById(S.topic); if (!S.dang || !T.dangs.some(d=>d.id===S.dang)) S.dang = T.dangs[0] ? T.dangs[0].id : null;
   const d = T.dangs.find(x=>x.id===S.dang);
   const side = `<button class="back" data-alltopics>← Tất cả chủ đề</button><h3>${esc(T.name)}</h3>${isAdminR()?`<button class="mini" data-sfedit="topic" data-ref="${T.id}">✏️ Sửa chủ đề</button>`:''}` + T.dangs.map((x,i) => { const n = x.items.length, done = x.items.filter(p=>stat(S.prog,p[0])).length;
-    return `<button class="dg" data-dang="${x.id}" aria-current="${S.dang===x.id}">Dạng ${i+1}. ${M(x.name)}<small>${n} bài${staff?'':' · đã làm '+done}</small>${staff?'':`<div class="meter"><i style="width:${n?done/n*100:0}%"></i></div>`}</button>` }).join('') + (isAdminR()?`<button class="dg add" data-sfnew="dang" data-ref="${T.id}">+ Thêm dạng</button>`:'');
+    const gh = x.grp && (i === 0 || T.dangs[i-1].grp !== x.grp) ? `<p class="dgrp">${M(x.grp)}</p>` : '';
+    return gh + `<button class="dg" data-dang="${x.id}" aria-current="${S.dang===x.id}">${x.grp ? '' : `Dạng ${i+1}. `}${M(x.name)}<small>${n} bài${staff?'':' · đã làm '+done}</small>${staff?'':`<div class="meter"><i style="width:${n?done/n*100:0}%"></i></div>`}</button>` }).join('') + (isAdminR()?`<button class="dg add" data-sfnew="dang" data-ref="${T.id}">+ Thêm dạng</button>`:'');
   const main = busy() ? '<div class="paper" id="edbox"></div>' : S.pid && !S.asgId ? probShell() : d ? dangHTML(T, d) : `<div class="paper"><h1>${esc(T.name)}</h1><p class="empty">Chủ đề chưa có dạng nào.</p></div>`;
   $('#app').innerHTML = `<div class="wrap"><aside class="side">${side}</aside><section id="main">${main}</section></div>`;
   if (busy()) panelDraw(); else if (S.pid && !S.asgId) loadProb();
 }
+function topicGroups(cards){ const T = S.idx.topics; if (!T.some(t => t.grp)) return `<div class="topics">${cards.join ? cards.join('') : cards}</div>`;
+  const arr = Array.isArray(cards) ? cards : null; const out = []; let cur = null, buf = [];
+  const html = arr || cards.split(/(?=<button class="tc")/);
+  T.forEach((t, i) => { const g = t.grp || 'Khác'; if (g !== cur) { if (buf.length) out.push(`<h2 class="tgrp">${esc(cur)}</h2><div class="topics">${buf.join('')}</div>`); cur = g; buf = [] } buf.push(html[i]) });
+  if (buf.length) out.push(`<h2 class="tgrp">${esc(cur)}</h2><div class="topics">${buf.join('')}</div>`); return out.join('') }
+async function loadLT(id){ const el = document.getElementById('ltbox'); if (!el) return;
+  if (!S.tnth[id]) S.tnth[id] = (await safe(() => S.B.get('tnth/' + id))) || {theory:[]};
+  const t = S.tnth[id]; const box = document.getElementById('ltbox'); if (!box || box.dataset.lt !== id) return;
+  box.innerHTML = (t.theory||[]).length ? paras(t.theory) : '<p class="hint">Chưa có tóm tắt lí thuyết.</p>' }
 function dangHTML(T, d){
   const i = T.dangs.indexOf(d)+1, staff = isStaff();
-  const th = `<div class="row sp"><div class="kick">${esc(T.name)}${T.sgk?' · '+esc(T.sgk):''}</div>${isAdminR()?`<button class="mini" data-sfedit="dang" data-ref="${d.id}">✏️ Sửa dạng</button>`:''}</div><h1>Dạng ${i}. ${M(d.name)}</h1>
+  const th = `<div class="row sp"><div class="kick">${esc(T.name)}${d.grp ? ' · ' + M(d.grp) : T.sgk?' · '+esc(T.sgk):''}</div>${isAdminR()?`<button class="mini" data-sfedit="dang" data-ref="${d.id}">✏️ Sửa dạng</button>`:''}</div><h1>${d.grp ? M(d.name) : `Dạng ${i}. ${M(d.name)}`}</h1>
+   ${d.lt ? `<details class="ex lt"><summary>📘 Kiến thức cần nhớ${d.grp ? ' – ' + M(d.grp) : ''}</summary><div class="pq" id="ltbox" data-lt="${d.lt}"><p class="hint">Đang tải…</p></div></details>` : ''}
    <div class="th">${d.sign?`<p><span class="lbl">Dấu hiệu nhận ra.</span> ${M(d.sign)}</p>`:''}${d.fig?`<div class="fig">${d.fig}</div>`:''}
    ${(d.steps||[]).length?`<p class="lbl">Các bước làm</p><ol>${d.steps.map(s=>`<li>${M(s)}</li>`).join('')}</ol>`:''}
    ${(d.know||[]).length?`<p class="lbl">Kiến thức dùng</p><ul>${d.know.map(s=>`<li>${M(s)}</li>`).join('')}</ul>`:''}
@@ -614,8 +631,9 @@ function dangHTML(T, d){
     : `<div class="legend"><span class="l1">${ST[1]}</span><span class="l2">${ST[2]}</span><span class="l3">${ST[3]}</span><span>Chưa làm</span>${isFull()?'':'<span>🔒 Gói Full</span>'}</div>`;
   return `<div class="paper">${th}<h2>Bài tập (${list.length})</h2>${tools}<div class="chips">${chips}</div></div>`;
 }
+document.addEventListener('toggle', e => { const el = e.target; if (el.classList && el.classList.contains('lt') && el.open) { const b = el.querySelector('#ltbox'); if (b) loadLT(b.dataset.lt) } }, true);
 function seqOf(){ if (S.asgId){ const a = S.asg.find(x=>x.id===S.asgId); return a ? a.pids : [] }
-  const m = S.P[S.pid]; if (m.k === 'doc') return docItems(docById(m.t, idxOfM(m))).map(x=>x[0]); return dangOf(m).items.filter(x=>x[1]===m.y).map(x=>x[0]) }
+  const m = S.P[S.pid]; if (m.k === 'doc') return docItems(docById(m.t, idxOfM(m))).map(x=>x[0]); return m.k === 'tl' ? dangOf(m).items.map(x=>x[0]) : dangOf(m).items.filter(x=>x[1]===m.y).map(x=>x[0]) }
 const probShell = () => `<div class="paper" id="prob"><p class="empty">Đang tải bài…</p></div>`;
 async function getProb(pid){
   const key = (S.asgId||'') + '/' + pid; if (S.cache[key]) return S.cache[key];
@@ -630,7 +648,7 @@ async function loadProb(){
   const back = a ? `<button class="btn sm" data-back-asg>← ${esc(a.title)}</button>`
     : m.k === 'doc' ? `<button class="btn sm" data-back>← ${esc(docById(m.t).title)}</button>`
     : m.k === 'tn' ? `<button class="btn sm" data-back>← Bài ${baiById(m.bai).no}</button>`
-    : `<button class="btn sm" data-back>← Dạng ${topicById(m.t).dangs.findIndex(x=>x.id===m.d)+1}</button>`;
+    : (() => { const T0 = topicById(m.t), d0 = T0.dangs.find(x=>x.id===m.d); return `<button class="btn sm" data-back>← ${d0 && d0.grp ? M(d0.name) : 'Dạng ' + (T0.dangs.indexOf(d0)+1)}</button>` })();
   const nav = `<div class="row sp" style="margin-top:18px"><button class="btn" data-nav="-1" ${k<=0?'disabled':''}>← Trước</button><button class="btn pri" data-nav="1" ${k>=seq.length-1?'disabled':''}>Tiếp →</button></div>`;
   const head = src => `<div class="row sp">${back}<span class="src">${a?`Câu ${k+1}/${seq.length} trong bài giao · `:''}${src?'Nguồn: '+esc(src):''}</span></div><h1 style="margin-top:16px">${label(pid)}<span class="tag ${isTN(m.y)?'tn':''}">${TYPEN[m.y]}</span>${m.lv?`<span class="tag">${LVN[m.lv]||m.lv}</span>`:''}</h1>`;
   const box = () => document.getElementById('prob');
@@ -1320,7 +1338,9 @@ async function readDocx(file, prog){
       else if (isT(c, 'm', 'oMath')) out.push({t:'m', tex: omml(c).trim()})
       else if (isT(c, 'm', 'oMathPara')) { for (const m of desc(c, 'm', 'oMath')) out.push({t:'m', tex: omml(m).trim(), disp:1}) }
       else if (isT(c, 'w', 'object')) { const ole = desc(c, 'o', 'OLEObject')[0], prog = ole ? ole.getAttribute('ProgID') || '' : '';
-        if (/^Equation/.test(prog)) { const tex = await eq(wv(ole, 'r', 'id')); out.push(tex != null ? {t:'m', tex} : {t:'t', s:'[công thức lỗi]'}) }
+        const tex = ole && (!prog || /^Equation/.test(prog)) ? await eq(wv(ole, 'r', 'id')) : null;
+        if (/^Equation/.test(prog)) out.push(tex != null ? {t:'m', tex} : {t:'t', s:'[công thức lỗi]'});
+        else if (tex != null) out.push({t:'m', tex});
         else { const im = desc(c, 'v', 'imagedata')[0]; if (im) { const [w, h] = shapeSize(c); const u = await img(wv(im, 'r', 'id'), w, h); if (u) out.push({t:'img', u}) } } }
       else if (isT(c, 'w', 'drawing')) { const bl = desc(c, 'a', 'blip')[0], ex = desc(c, 'wp', 'extent')[0];
         if (bl) { const w = ex ? +ex.getAttribute('cx') / 9525 : 0, h = ex ? +ex.getAttribute('cy') / 9525 : 0; const u = await img(wv(bl, 'r', 'embed'), w, h); if (u) out.push({t:'img', u}) } }
@@ -1350,7 +1370,7 @@ function blocksToLines(blocks, E){
     close(); return o.replace(/\*\*(\s*)\*\*/g, '$1').replace(/\*\*\*\*/g, '') };
   const L = [];
   for (const b of blocks) {
-    if (b.t === 'p') segTxt(b.s).split('\n').forEach(x => L.push(x.replace(/ /g, ' ').trim()));
+    if (b.t === 'p') segTxt(b.s).normalize('NFC').split('\n').forEach(x => L.push(x.replace(/ /g, ' ').trim()));
     else { const cells = b.rows.map(r => r.map(c => c.map(segTxt).join(' ').replace(/\n/g, ' ').trim()));
       const flat = cells.flat(); const opts = flat.filter(x => /^\**[A-D]\s*[.)]/.test(x)).length;
       if (opts >= 2 || b.rows.length === 1 && flat.length <= 4) cells.forEach(r => L.push(r.join('   ')));   // bảng chỉ để xếp phương án / hình
@@ -1452,7 +1472,7 @@ async function readAnyFile(file, kind, E, prog){
   let lines, note = '';
   if (/\.docx$/.test(n)) { prog && prog('Đang đọc file Word…'); const r = await readDocx(file, prog); lines = blocksToLines(r.blocks, E);
     note = `${r.neq} công thức MathType, ${r.nimg} hình${r.bad ? `, ${r.bad} công thức không đọc được` : ''}.` }
-  else if (/\.(tex|txt|md)$/.test(n)) lines = texToLines(await file.text());
+  else if (/\.(tex|txt|md)$/.test(n)) lines = texToLines((await file.text()).normalize('NFC'));
   else throw new Error('chỉ nhận file .docx, .pdf, .tex, .txt hoặc ảnh');
   const R = splitProblems(lines); let D = R.dangs;
   if (!D.length) { const t = lines.filter(Boolean); if (t.length) D = [{name:'', meth:[], items:[{st: t, so: []}]}]; note += ' Không thấy "Bài 1." / "Câu 1." nên gộp cả tệp thành một bài.' }
