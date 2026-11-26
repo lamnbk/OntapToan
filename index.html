@@ -364,6 +364,15 @@ table{font-size:14px}th{font-weight:600}
 .side .dgrp:first-of-type{margin-top:6px}
 details.lt{margin:10px 0 4px}details.lt summary{font-weight:600}
 @media(max-width:900px){.dgrp{flex:none;align-self:center;margin:0 4px;max-width:140px}}
+/* chuyển bài */
+.mvlist{display:flex;flex-direction:column;gap:6px;margin-top:10px;max-height:62vh;overflow:auto;padding-right:4px}
+.mvrow{border:1px solid var(--line,#d9dccf);border-radius:10px;padding:8px 12px;background:var(--card,#fff)}
+.mvrow>summary{cursor:pointer;display:flex;flex-wrap:wrap;align-items:center;gap:8px;list-style:none}
+.mvrow>summary::-webkit-details-marker{display:none}
+.mvrow>summary .hint{flex:1 1 220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mvrow[open]{box-shadow:0 1px 0 var(--line,#d9dccf)}
+.mvrow .pq{margin-top:8px}
+.seg [aria-pressed="true"]{}
 
 </style>
 </head>
@@ -511,7 +520,7 @@ function tabsFor(){ const r = role();
   if (r === 'teacher') return [['kho','Tự luận'],['khotn','Trắc nghiệm'],...ex,['lop','Lớp & học sinh'],['giao','Giao bài'],['theodoi','Theo dõi']];
   return [['baigiao','Bài được giao'],['ontap','Tự luận'],['tracnghiem','Trắc nghiệm'],...ex,['ketqua','Kết quả']] }
 const curView = () => { const ok = tabsFor().map(t=>t[0]); const h = location.hash.slice(1); return ok.includes(h) ? h : ok[0] };
-function go(v){ S.pid=null; S.asgId=null; S.doc=null; S.dall=false; S.ed=null; S.sf=null; S.imp=null; if (location.hash.slice(1) !== v) location.hash = v; else render() }
+function go(v){ S.pid=null; S.asgId=null; S.doc=null; S.dall=false; S.ed=null; S.sf=null; S.imp=null; S.mv=null; if (location.hash.slice(1) !== v) location.hash = v; else render() }
 window.addEventListener('hashchange', () => render());
 const wrap1 = (h, w) => `<div class="wrap" style="grid-template-columns:minmax(0,1fr);max-width:${w||1100}px">${h}</div>`;
 const LOGO = '<svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#F2C14E"/><path d="M6.5 17.5h3.2l3.6 7.5 6.2-16.5h6" fill="none" stroke="#16302A" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -627,7 +636,7 @@ function dangHTML(T, d){
   const list = d.items;
   const chips = list.map((x,k) => { const p = x[0], s = staff ? 0 : stat(S.prog,p), lk = !canSee(p);
     return `<button class="chip ${s?'s'+s:''} ${lk?'lock':''} ${staff&&S.sel.has(p)?'sel':''}" data-pid="${p}" aria-label="Bài ${k+1}${lk?', thuộc Gói Full':''}">${k+1}</button>` }).join('');
-  const tools = staff ? `<div class="row"><span class="hint">Bấm số bài để xem và chọn giao.</span><button class="btn sm" data-selall="${d.id}" data-styp="tl">Chọn cả dạng</button><button class="btn sm" data-rand="${d.id}" data-styp="tl">Chọn ngẫu nhiên 5 bài</button>${isAdminR()?`<button class="btn sm pri" data-padd="${d.id}" data-ptyp="tl">+ Thêm bài</button><button class="btn sm" data-impdang="${d.id}">📄 Nhập bài từ file</button>`:''}</div>`
+  const tools = staff ? `<div class="row"><span class="hint">${S.pickMode?'Đang bật chọn từng bài: bấm số bài để chọn / bỏ chọn.':'Bấm số bài để xem và chọn giao.'}</span><button class="btn sm" data-pickmode aria-pressed="${!!S.pickMode}">☑ Chọn từng bài</button><button class="btn sm" data-selall="${d.id}" data-styp="tl">Chọn cả dạng</button><button class="btn sm" data-rand="${d.id}" data-styp="tl">Chọn ngẫu nhiên 5 bài</button>${isAdminR()?`<button class="btn sm pri" data-padd="${d.id}" data-ptyp="tl">+ Thêm bài</button><button class="btn sm" data-impdang="${d.id}">📄 Nhập bài từ file</button>`:''}</div>`
     : `<div class="legend"><span class="l1">${ST[1]}</span><span class="l2">${ST[2]}</span><span class="l3">${ST[3]}</span><span>Chưa làm</span>${isFull()?'':'<span>🔒 Gói Full</span>'}</div>`;
   return `<div class="paper">${th}<h2>Bài tập (${list.length})</h2>${tools}<div class="chips">${chips}</div></div>`;
 }
@@ -684,7 +693,7 @@ async function loadProb(){
   } else { needSelf = !staff }
   const solBtn = P.so && P.so.length ? (solLocked ? `<button class="btn" disabled>🔒 ${isTN(P.y)?'Trả lời':'Tự đánh giá'} trước rồi xem lời giải</button>` : `<button class="btn" data-sol>${S.openSol?'Ẩn lời giải':'Lời giải'}</button>`) : `<span class="hint">Chưa có lời giải trong tài liệu gốc.</span>`;
   const sel = (staff ? `<div class="checks"><label><input type="checkbox" data-pick="${pid}" ${S.sel.has(pid)?'checked':''}> Chọn để giao</label></div>` : '')
-    + (isAdminR() && !a ? `<button class="btn sm" data-pedit="${pid}">✏️ Sửa bài</button><button class="btn sm red" data-pdel="${pid}">🗑 Xoá bài</button>` : '');
+    + (isAdminR() && !a ? `<button class="btn sm" data-pedit="${pid}">✏️ Sửa bài</button><button class="btn sm" data-pmv="${pid}">↪ Chuyển bài</button><button class="btn sm red" data-pdel="${pid}">🗑 Xoá bài</button>` : '');
   const assess = needSelf ? `<p class="hint" style="margin-top:14px">${isTN(P.y)?'Đáp án nằm trong lời giải: bấm <b>Lời giải</b> để đối chiếu, rồi tự chấm:':'Tự đánh giá:'}</p><div class="assess" role="group" aria-label="Tự đánh giá">${(isTN(P.y)?[[1,'Mình làm đúng'],[3,'Mình làm sai']]:[[1,ST[1]],[2,ST[2]],[3,ST[3]]]).map(([n,t])=>`<button class="a${n}" data-as="${n}" aria-pressed="${s===n}">${t}</button>`).join('')}</div>` : '';
   box().innerHTML = `${head(P.src)}${body}<div class="row" style="margin-top:14px">${solBtn}${sel}</div>${S.openSol && !solLocked ? `<div class="sol pq"><h4>Lời giải</h4>${paras(P.so)}</div>` : ''}${assess}${nav}`;
 }
@@ -724,7 +733,7 @@ function baiHTML(C, B){
     const meth = th && th.methods && th.methods[d.id];
     return `<div class="card"><div class="row sp"><h3>Dạng ${i+1}. ${M(esc(d.name))}</h3>${isAdminR()?`<button class="mini" data-sfedit="tdang" data-ref="${d.id}">✏️ Sửa</button>`:''}</div>${meth&&meth.length?`<details class="ex"><summary>Phương pháp giải</summary>${paras(meth)}</details>`:''}
       <div class="seg" role="group">${['mc','ds','tln'].map(t=>`<button data-ttyp="${t}" aria-pressed="${t===ty}" ${n[t]?'':'disabled'}>${TYPEN[t]} (${n[t]})</button>`).join('')}</div>
-      ${staff?`<div class="row" style="margin-bottom:6px"><button class="btn sm" data-selall="${d.id}" data-styp="${ty}">Chọn tất cả</button><button class="btn sm" data-rand="${d.id}" data-styp="${ty}">Chọn ngẫu nhiên 5 câu</button>${isAdminR()?`<button class="btn sm pri" data-padd="${d.id}" data-ptyp="${ty}">+ Thêm câu ${TYPEN[ty].toLowerCase()}</button><button class="btn sm" data-impdang="${d.id}">📄 Nhập từ file</button>`:''}</div>`:''}
+      ${staff?`<div class="row" style="margin-bottom:6px"><button class="btn sm" data-pickmode aria-pressed="${!!S.pickMode}">☑ Chọn từng câu</button><button class="btn sm" data-selall="${d.id}" data-styp="${ty}">Chọn tất cả</button><button class="btn sm" data-rand="${d.id}" data-styp="${ty}">Chọn ngẫu nhiên 5 câu</button>${isAdminR()?`<button class="btn sm pri" data-padd="${d.id}" data-ptyp="${ty}">+ Thêm câu ${TYPEN[ty].toLowerCase()}</button><button class="btn sm" data-impdang="${d.id}">📄 Nhập từ file</button>`:''}</div>`:''}
       <div class="chips">${chips}</div></div>` }).join('');
   const legend = staff ? '' : `<div class="legend"><span class="l1">Đúng</span><span class="l3">Sai</span><span>Chưa làm</span>${isFull()?'':'<span>🔒 Gói Full</span>'}</div>`;
   return `<div class="paper"><div class="row sp"><div class="kick">${esc(C.name)}</div>${isAdminR()?`<span class="row" style="gap:6px"><button class="mini" data-sfedit="bai" data-ref="${B.id}">✏️ Sửa bài học</button><button class="mini" data-sfnew="tdang" data-ref="${B.id}">+ Thêm dạng</button></span>`:''}</div><h1>${M(esc(B.name))}</h1>
@@ -1500,7 +1509,7 @@ async function readAnyFile(file, kind, E, prog){
   return {dangs: D.map(d => ({name: d.name, meth: d.meth || [], items: d.items.map(p => shapeItem(p, kind === 'tl' ? 'tl' : kind === 'doc' ? 'doc' : 'any'))})), theory: R.theory, note} }
 
 /* ---------------- cấu trúc: chủ đề / dạng / chương / bài học (Admin) ---------------- */
-const busy = () => S.ed || S.sf || S.imp;
+const busy = () => S.ed || S.sf || S.imp || S.mv;
 const uid36 = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 const lines2h = (s, E) => String(s||'').split('\n').map(x => x.trim()).filter(Boolean).map(x => t1(x, E));
 const h2lines = (arr, E) => (arr||[]).map(h => h2t(h, E)).join('\n');
@@ -1703,7 +1712,7 @@ function docHTML(D, K){ const staff = isStaff(), adm = isAdminR(); let no = 0;
   const meta = [K.ky ? KY[D.ky] : D.year, D.place, D.time ? D.time + ' phút' : '', docItems(D).length + ' câu'].filter(Boolean).map(esc).join(' · ');
   return `<div class="paper"><div class="row sp"><div class="kick">${meta}</div>${adm?`<span class="row" style="gap:6px"><button class="mini" data-sfedit="doc" data-ref="${D.id}">✏️ Sửa đề</button><button class="mini" data-sfnew="sec" data-ref="${D.id}">+ Thêm phần</button></span>`:''}</div>
     <h1>${esc(D.title)}</h1>${D.note?`<p class="hint">${esc(D.note)}</p>`:''}
-    <div class="row" style="margin:10px 0 4px"><button class="btn pri" data-dall>📄 Xem cả đề / In</button>${staff?`<button class="btn" data-seldoc="${D.id}">Chọn cả đề để giao</button>`:''}</div>
+    <div class="row" style="margin:10px 0 4px"><button class="btn pri" data-dall>📄 Xem cả đề / In</button>${staff?`<button class="btn" data-seldoc="${D.id}">Chọn cả đề</button><button class="btn" data-pickmode aria-pressed="${!!S.pickMode}">☑ Chọn từng câu</button>`:''}</div>
     ${staff?'':`<div class="legend"><span class="l1">${ST[1]}</span><span class="l2">${ST[2]}</span><span class="l3">${ST[3]}</span><span>Chưa làm</span>${isFull()?'':'<span>🔒 Gói Full</span>'}</div>`}${secs}</div>` }
 async function loadWhole(D, K){ const box = () => document.getElementById('dall'); const its = docItems(D); const out = []; let no = 0;
   const Ps = await Promise.all(its.map(x => canSee(x[0]) ? getProb(x[0]).catch(() => null) : Promise.resolve(null)));
@@ -1720,18 +1729,139 @@ async function loadWhole(D, K){ const box = () => document.getElementById('dall'
   box().innerHTML = `<div class="row sp noprint"><button class="btn sm" data-dall>← Về danh sách câu</button><span class="row" style="gap:8px"><label class="checks"><label><input type="checkbox" id="dsol" ${showSol?'checked':''}> Hiện đáp án và lời giải</label></label><button class="btn sm pri" data-print>🖨 In</button></span></div>
     <div class="whole"><div class="wh"><div class="hint">${esc([K.ky ? KY[D.ky] : D.year, D.place].filter(Boolean).join(' · '))}</div><h1>${esc(D.title)}</h1>${D.time?`<p class="hint">Thời gian làm bài: ${D.time} phút</p>`:''}</div>${secs}</div>` }
 
-window.__T = {readDocx, blocksToLines, splitProblems, shapeItem};
-const panelDraw = () => S.ed ? edDraw() : S.sf ? sfDraw() : impDraw();
+/* ---------------- chuyển bài / câu sang mục khác (Admin) ---------------- */
+const MVK = {tl:'Tự luận', tn:'Trắc nghiệm', doc:'Đề cương / Đề KT / Đề thi'};
+const htxt = h => String(h||'').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+// tách phương án A. B. C. D. (hoặc ý a) b) c) d)) ở cuối đề
+function splitChoices(st, up){
+  const L = up ? 'ABCD' : 'abcd', tok = up ? '([A-D])\\s*[.):]' : '([a-d])\\s*\\)';
+  const re = new RegExp('(^|\\s|>|<br>)(?:<b>|<strong>)?' + tok + '(?:</b>|</strong>)?(?=\\s|&nbsp;|<|[^A-Za-zÀ-ỹ])', 'g');
+  st = (st||[]).map(p => { if (p && p.tb && !p.h) { const cells = p.tb.flat().map(c => typeof c === 'string' ? c : (c && c.h) || '').filter(c => htxt(c));
+      if (cells.length >= 2 && cells.length <= 8 && new RegExp('^\\s*(?:<b>|<strong>)?' + tok).test(cells[0])) return {h: cells.join('<br>')} } return p });
+  const ps = st.map(p => p && p.h != null ? String(p.h) : null);
+  // tìm đoạn bắt đầu bằng A. / a) gần cuối nhất
+  for (let s = ps.length - 1; s >= 0; s--) { if (ps[s] == null) continue;
+    const head = new RegExp('^\\s*(?:<b>|<strong>)?' + tok).exec(ps[s]); if (!head || head[1] !== L[0]) continue;
+    let joined = '', cut = []; for (let i = s; i < ps.length; i++) { if (ps[i] == null) break; cut.push(i); joined += (joined ? '<br>' : '') + ps[i] }
+    const hits = []; let m; re.lastIndex = 0; while ((m = re.exec(joined))) { hits.push({k: m[2], at: m.index + m[1].length, end: re.lastIndex}); if (!m[0]) re.lastIndex++ }
+    const seq = []; for (const h of hits) if (h.k === L[seq.length]) seq.push(h);
+    if (seq.length !== 4) continue;
+    const opts = seq.map((h, i) => { let v = joined.slice(h.end, i < 3 ? seq[i+1].at : joined.length);
+      v = v.replace(/^(?:<\/b>|<\/strong>|\s|&nbsp;|[.:)])+/, '').replace(/(?:<br>|\s|;|,)+$/, '').replace(/^\s*<\/?b>\s*/, '').trim(); return {k: up ? h.k : h.k, h: v} });
+    if (opts.some(o => !htxt(o.h) && !/<img/.test(o.h))) continue;
+    const rest = ps.slice(cut[cut.length-1] + 1).map((_, j) => st[cut[cut.length-1] + 1 + j]);
+    return {st: st.slice(0, s).concat(rest), opts} }
+  return null }
+function keyFromSol(so){ const t = (so||[]).map(p => htxt(p && p.h)).join(' ');
+  const m = /(?:Chọn|chọn|Đáp án|đáp án|ĐÁP ÁN)\s*(?:đúng)?\s*(?:là)?\s*[:.]?\s*\(?([A-D])\b/.exec(t); return m ? m[1] : '' }
+function guessTN(P){ if (P.y !== 'tl') return P.y;
+  if (splitChoices(P.st, true)) return 'mc'; if (splitChoices(P.st, false)) return 'ds'; return 'tln' }
+// đổi nội dung bài theo kiểu câu mới
+function convDoc(P, y){
+  const base = {st: P.st || [], so: P.so || []}; if (P.src) base.src = P.src;
+  if (y === P.y) { const o = {...base}; if (P.opts) o.opts = P.opts; if (P.items) o.items = P.items; if (P.ans != null && y !== 'tl') o.ans = P.ans; return o }
+  if (y === 'tl') { const st = [...base.st], so = [...base.so];
+    if (P.y === 'mc' && P.opts) { P.opts.forEach(o => st.push({h: `<b>${o.k}.</b> ${o.h}`})); if (P.ans && !/Chọn\s*[A-D]/.test(so.map(p=>htxt(p.h)).join(' '))) so.unshift({h: `<b>Chọn ${P.ans}.</b>`}) }
+    if (P.y === 'ds' && P.items) { P.items.forEach(o => st.push({h: `<b>${o.k})</b> ${o.h}`})); if (P.ans) so.unshift({h: '<b>Đáp án:</b> ' + P.items.map((o,i) => `${o.k}) ${P.ans[i]==='Đ'?'Đúng':'Sai'}`).join('; ')}) }
+    if (P.y === 'tln' && P.ans) so.unshift({h: '<b>Đáp số:</b> ' + P.ans});
+    return {...base, st, so} }
+  // sang trắc nghiệm: lấy nguồn dạng tự luận trước
+  const src = P.y === 'tl' ? base : convDoc(P, 'tl');
+  if (y === 'mc') { const r = splitChoices(src.st, true); if (r) return {...base, st: r.st, opts: r.opts, ans: (P.y === 'mc' ? P.ans : '') || keyFromSol(src.so)} }
+  if (y === 'ds') { const r = splitChoices(src.st, false); if (r) return {...base, st: r.st, items: r.opts.map(o => ({k: o.k.toLowerCase(), h: o.h})), ans: P.y === 'ds' ? (P.ans||'') : ''} }
+  return {...src, ans: P.y === 'tln' ? (P.ans||'') : ''} }
+async function openMove(pids){
+  const all = pids.length; pids = pids.filter(p => S.P[p] && S.P[p].g === S.grade);
+  if (!pids.length) { note(`Các bài đã chọn không thuộc lớp ${S.grade}. Chuyển sang lớp đó trước.`); return }
+  const m0 = S.P[pids[0]];
+  S.mv = {pids, k: m0.k === 'tl' ? 'tn' : 'tl', a:'', b:'', d:'', newd:'', y:{}, docs:{}, loading:`Đang tải ${pids.length} bài…`, skipped: all - pids.length};
+  S.pid = null; S.ed = S.sf = S.imp = null; render(); scrollTo(0,0);
+  let k = 0; const q = [...pids];
+  await Promise.all(Array.from({length: 8}, async () => { while (q.length) { const p = q.shift(); const P = await safe(() => S.B.get('problems/' + p)); if (!S.mv) return; if (P) S.mv.docs[p] = P; k++; if (S.mv) { S.mv.loading = `Đang tải bài: ${k}/${pids.length}…`; if (k % 10 === 0) mvDraw() } } }));
+  if (!S.mv) return; S.mv.loading = ''; mvDefaults(); mvDraw() }
+function mvDefaults(){ const V = S.mv, I = S.idx;
+  if (V.k === 'tl') { const T = topicById(V.a) || I.topics[0]; V.a = T ? T.id : ''; if (!T || !T.dangs.some(d => d.id === V.d) && V.d !== '__new') V.d = T && T.dangs[0] ? T.dangs[0].id : '__new' }
+  if (V.k === 'tn') { const C = chById(V.a) || (I.tn||[])[0]; V.a = C ? C.id : ''; const B = C && (C.bais.find(b => b.id === V.b) || C.bais[0]); V.b = B ? B.id : ''; if (!B || !B.dangs.some(d => d.id === V.d) && V.d !== '__new') V.d = B && B.dangs[0] ? B.dangs[0].id : '__new' }
+  if (V.k === 'doc') { const D = docById(V.a) || (I.docs||[])[0]; V.a = D ? D.id : ''; if (!D || !D.secs.some(s => s.id === V.d)) V.d = D && D.secs[0] ? D.secs[0].id : '' }
+  for (const p of V.pids) { const P = V.docs[p]; if (!P) continue; const cur = S.P[p].y;
+    const ok = mvTypes(P); if (!V.y[p] || !ok.includes(V.y[p])) V.y[p] = V.k === 'tl' ? 'tl' : ok.includes(cur) ? cur : V.k === 'doc' && cur === 'tl' ? 'tl' : guessTN(P) } }
+function mvTypes(P){ const V = S.mv; if (V.k === 'tl') return ['tl'];
+  const src = P.y === 'tl' ? P : convDoc(P, 'tl'); const t = [];
+  if (P.y === 'mc' || splitChoices(src.st, true)) t.push('mc'); if (P.y === 'ds' || splitChoices(src.st, false)) t.push('ds'); t.push('tln');
+  if (V.k === 'doc') t.unshift('tl'); return t }
+function mvWhere(m){ const I = S.idx;
+  if (m.k === 'tl') { const T = topicById(m.t), d = T && T.dangs.find(x => x.id === m.d); return `${esc(T ? T.name : '')} › ${M(d ? d.name : '')}` }
+  if (m.k === 'tn') { const B = baiById(m.bai), d = B && B.dangs.find(x => x.id === m.d); return `${M(esc(B ? B.name : ''))} › ${M(esc(d ? d.name : ''))}` }
+  const D = docById(m.t), sc = D && D.secs.find(x => x.id === m.d); return `${esc(D ? D.title : '')} › ${M(esc(sc ? sc.name : ''))}` }
+function mvDraw(){ const V = S.mv, box = $('#edbox'); if (!V || !box) return; const I = S.idx;
+  const sel = (k, lab, opts) => `<div class="edf"><label for="mv_${k}"><b>${lab}</b></label><select id="mv_${k}" data-mvsel="${k}">${opts.map(([v, t]) => `<option value="${esc(v)}" ${V[k]===v?'selected':''}>${esc(t)}</option>`).join('')}</select></div>`;
+  const tx = h => htxt(h).replace(/\\\(|\\\)/g, '');
+  let dest = '';
+  if (V.k === 'tl') { const T = topicById(V.a); dest = (I.topics||[]).length ? sel('a', 'Chủ đề', I.topics.map(t => [t.id, t.name])) + sel('d', 'Dạng', (T ? T.dangs : []).map((d, i) => [d.id, (d.grp ? tx(d.grp) + ' › ' : 'Dạng ' + (i+1) + '. ') + tx(d.name)]).concat([['__new', '+ Tạo dạng mới…']])) : '<p class="hint">Lớp này chưa có chủ đề tự luận. Thêm chủ đề trước.</p>' }
+  if (V.k === 'tn') { const C = chById(V.a), B = baiById(V.b); dest = (I.tn||[]).length ? sel('a', 'Chương', I.tn.map(c => [c.id, c.name])) + sel('b', 'Bài học', (C ? C.bais : []).map(b => [b.id, tx(b.name)])) + (B ? sel('d', 'Dạng', B.dangs.map((d, i) => [d.id, 'Dạng ' + (i+1) + '. ' + tx(d.name)]).concat([['__new', '+ Tạo dạng mới…']])) : '<p class="hint">Chương này chưa có bài học.</p>') : '<p class="hint">Lớp này chưa có chương trắc nghiệm. Thêm chương trước.</p>' }
+  if (V.k === 'doc') { const D = docById(V.a); dest = (I.docs||[]).length ? sel('a', 'Đề', I.docs.map(d => [d.id, (DOCK[d.kind] ? DOCK[d.kind].one + ': ' : '') + d.title])) + sel('d', 'Phần', (D ? D.secs : []).map(s => [s.id, tx(s.name)])) : '<p class="hint">Lớp này chưa có đề nào.</p>' }
+  if (V.d === '__new') dest += `<div class="edf"><label for="mv_new"><b>Tên dạng mới</b></label><input type="text" id="mv_new" data-mvnew value="${esc(V.newd)}" placeholder="Ví dụ: Câu hỏi trắc nghiệm chuyên đề 1.4"></div>`;
+  const cnt = {}; V.pids.forEach(p => { const y = V.y[p]; if (y) cnt[y] = (cnt[y]||0) + 1 });
+  const nokey = V.pids.filter(p => V.y[p] === 'mc' && V.docs[p] && !convDoc(V.docs[p], 'mc').ans).length;
+  const rows = V.loading ? `<p><span class="spin"></span> ${esc(V.loading)}</p>` : V.pids.map(p => { const P = V.docs[p], m = S.P[p];
+    if (!P) return `<div class="mvrow"><b>${label(p)}</b> <span class="hint">Không tải được, sẽ bỏ qua.</span></div>`;
+    const ty = mvTypes(P), y = V.y[p], c = convDoc(P, y);
+    const opt = y === 'mc' && c.opts ? `<div class="opts sm">${c.opts.map(o => `<div class="opt ${c.ans===o.k?'ok':''}"><b>${o.k}</b><span>${M(o.h)}</span></div>`).join('')}</div>${c.ans ? '' : '<p class="hint">Chưa thấy đáp án: học sinh xem lời giải rồi tự chấm. Có thể chọn đáp án sau bằng "Sửa bài".</p>'}`
+      : y === 'ds' && c.items ? `<div class="opts sm">${c.items.map(o => `<div class="opt"><b>${o.k}</b><span>${M(o.h)}</span></div>`).join('')}</div>` : '';
+    return `<details class="mvrow"><summary><b>${label(p)}</b> <span class="tag ${isTN(m.y)?'tn':''}">${TYPEN[m.y]}</span> → ${ty.length > 1 ? `<select data-mvy="${p}" style="width:auto;min-height:30px;padding:2px 8px;font-size:13px">${ty.map(t => `<option value="${t}" ${t===y?'selected':''}>${TYPEN[t]}</option>`).join('')}</select>` : `<span class="tag ${isTN(y)?'tn':''}">${TYPEN[y]}</span>`} <span class="hint">${esc(tx((P.st[0]||{}).h).slice(0, 90))}</span></summary>
+      <p class="hint">Đang ở: ${mvWhere(m)}</p><div class="pq">${paras(c.st)}${opt}</div></details>` }).join('');
+  box.innerHTML = `<div class="row sp"><button class="btn sm" data-mvcancel>← Huỷ</button><span class="src">Toán ${S.grade}</span></div>
+    <h1 style="margin-top:14px">Chuyển ${V.pids.length} bài sang mục khác</h1>${V.skipped ? `<p class="hint">Bỏ qua ${V.skipped} bài của lớp khác.</p>` : ''}
+    <div class="edf"><b>Chuyển vào</b><div class="seg" role="group">${Object.entries(MVK).map(([k, t]) => `<button type="button" data-mvk="${k}" aria-pressed="${V.k===k}">${t}</button>`).join('')}</div></div>
+    ${dest}
+    <div class="card"><b>Kiểu câu sau khi chuyển</b><p class="hint">${V.k === 'tl' ? 'Câu trắc nghiệm chuyển sang tự luận: các phương án được ghi vào cuối đề, đáp án ghi vào đầu lời giải.' : 'Bài tự luận có sẵn 4 phương án A, B, C, D trong đề sẽ thành câu nhiều lựa chọn (đáp án lấy từ dòng "Chọn …" trong lời giải); có 4 ý a), b), c), d) thì thành câu đúng/sai; còn lại thành câu trả lời ngắn. Bấm vào từng bài để xem trước hoặc đổi kiểu.'}</p>
+      <p>${Object.entries(cnt).map(([y, n]) => `<span class="tag ${isTN(y)?'tn':''}">${TYPEN[y]}: ${n}</span>`).join(' ')}${nokey ? ` <span class="hint">· ${nokey} câu nhiều lựa chọn chưa có đáp án</span>` : ''}</p></div>
+    <div class="mvlist">${rows}</div>
+    <div class="row" style="margin-top:16px"><button class="btn pri" data-mvsave ${V.loading?'disabled':''}>↪ Chuyển ${V.pids.length} bài</button><button class="btn" data-mvcancel>Huỷ</button><span id="mvst" class="hint"></span></div>` }
+async function mvSave(){ const V = S.mv, st = $('#mvst'), idx = cloneIdx(); idx.topics = idx.topics || []; idx.tn = idx.tn || [];
+  let dest, base;
+  if (V.k === 'tl') { const T = idx.topics.find(t => t.id === V.a); if (!T) { note('Chọn chủ đề.'); return }
+    if (V.d === '__new') { if (!V.newd.trim()) { note('Nhập tên dạng mới.'); return } dest = {id: uid36(T.id + '_'), name: V.newd.trim(), sign:'', steps:[], know:[], warn:[], items:[]}; if (T.dangs.some(d => d.grp)) dest.grp = 'Bài tập bổ sung'; T.dangs.push(dest) } else dest = T.dangs.find(d => d.id === V.d);
+    base = {t: T.id} }
+  if (V.k === 'tn') { const C = idx.tn.find(c => c.id === V.a), B = C && C.bais.find(b => b.id === V.b); if (!B) { note('Chọn bài học.'); return }
+    if (V.d === '__new') { if (!V.newd.trim()) { note('Nhập tên dạng mới.'); return } dest = {id: uid36(B.id + 'd'), name: V.newd.trim(), items:[]}; B.dangs.push(dest) } else dest = B.dangs.find(d => d.id === V.d);
+    base = {t: C.id, bai: B.id} }
+  if (V.k === 'doc') { const D = (idx.docs||[]).find(x => x.id === V.a); if (!D) { note('Chọn đề.'); return } dest = D.secs.find(s => s.id === V.d); base = {t: D.id, doc: D.id} }
+  if (!dest) { note('Chọn nơi chuyển đến.'); return }
+  const moved = V.pids.filter(p => V.docs[p] && S.P[p].d !== dest.id || (V.docs[p] && V.y[p] !== S.P[p].y));
+  if (!moved.length) { note('Các bài đã ở đúng chỗ này.'); return }
+  const srcD = new Set(), newDocs = {};
+  for (const p of moved) { const m = S.P[p], P = V.docs[p], y = V.y[p];
+    const sd = findDang(idx, m.d); if (sd) { const i = sd.items.findIndex(x => x[0] === p); if (i >= 0) sd.items.splice(i, 1); srcD.add(sd) }
+    const lv = P.lv || m.lv || 'NB';
+    const doc = {...base, d: dest.id, y, ...convDoc(P, y)}; if (V.k !== 'tl' && (V.k === 'tn' || isTN(y))) doc.lv = lv;
+    newDocs[p] = doc; dest.items.push(V.k === 'tl' ? [p, y, 0] : [p, y, 0, lv]) }
+  const flagCh = new Set(); for (const d of [...srcD, dest]) reflag(d, S.cfg.basicN).forEach(p => flagCh.add(p));
+  const it = {}; for (const d of [...srcD, dest]) d.items.forEach(x => it[x[0]] = x);
+  const ops = [];
+  for (const p of moved) { newDocs[p].basic = !!it[p][2]; ops.push({p: 'problems/' + p, d: newDocs[p]});
+    S.asg.filter(a => (a.pids||[]).includes(p)).forEach(a => ops.push({p: `assignments/${a.id}/items/${p}`, d: newDocs[p]})) }
+  for (const p of flagCh) if (!newDocs[p] && it[p]) ops.push({p: 'problems/' + p, d: {basic: !!it[p][2]}, merge: 1});
+  if (st) st.textContent = 'Đang chuyển…';
+  const ok = await safe(async () => { await batchChunks(ops, k => { if (st) st.textContent = `Đang ghi: ${k}/${ops.length}…` }); await saveIdx(idx); return true }, 'Không chuyển được');
+  if (!ok) { if (st) st.textContent = ''; return }
+  for (const p of moved) Object.keys(S.cache).filter(k => k.endsWith('/' + p)).forEach(k => delete S.cache[k]);
+  moved.forEach(p => S.sel.delete(p)); S.mv = null; S.pickMode = false;
+  if (V.k === 'tl') { S.topic = base.t; S.dang = dest.id } else if (V.k === 'tn') { S.ch = base.t; S.bai = base.bai; S.ttyp = newDocs[moved[0]].y } else { S.doc = base.t }
+  flash(`Đã chuyển ${moved.length} bài.`); const dk = V.k === 'doc' ? (docById(base.t).kind || 'decuong') : ''; go(V.k === 'tl' ? 'kho' : V.k === 'tn' ? 'khotn' : dk); if (dk) { S.doc = base.t; render() } }
+
+window.__T = {readDocx, blocksToLines, splitProblems, shapeItem, splitChoices, convDoc, keyFromSol};
+const panelDraw = () => S.mv ? mvDraw() : S.ed ? edDraw() : S.sf ? sfDraw() : impDraw();
 /* ---------------- tray ---------------- */
 function renderTray(){ if (!isStaff() || !S.sel.size || curView()==='giao') { $('#tray').innerHTML = ''; return }
-  $('#tray').innerHTML = `<div class="tray"><b>Đã chọn ${S.sel.size} bài</b><button class="btn sm" data-clear>Bỏ chọn</button><button class="btn sm pri" data-go="giao">Tạo bài giao →</button></div>` }
+  $('#tray').innerHTML = `<div class="tray"><b>Đã chọn ${S.sel.size} bài</b><button class="btn sm" data-clear>Bỏ chọn</button><button class="btn sm" data-pickmode aria-pressed="${!!S.pickMode}">☑ Chọn từng bài: ${S.pickMode?'bật':'tắt'}</button>${isAdminR()?'<button class="btn sm" data-mv>↪ Chuyển sang mục khác</button>':''}<button class="btn sm pri" data-go="giao">Tạo bài giao →</button></div>` }
 
 /* ---------------- events ---------------- */
 const anyDang = id => allDangs(S.idx).find(d => d.id === id);
 function openPid(pid){ const m = S.P[pid]; if (m && m.g !== S.grade) { S.grade = m.g; S.idx = S.idxs[m.g] || null } S.pid = pid; S.openSol = false; if (m) { if (m.k === 'doc') { S.doc = m.t; S.dall = false; const D = docById(m.t); if (D && D.ky) S.ky = D.ky } else if (m.k === 'tn') { S.ch = m.t; S.bai = m.bai; S.ttyp = m.y } else { S.topic = m.t; S.dang = m.d } } render(); scrollTo(0,0) }
 document.addEventListener('click', async e => {
   const t = e.target.closest('button'); if (!t) return; const D = t.dataset;
-  if (busy() && !t.closest('#edbox') && !('signout' in D)) { if (!confirm('Bỏ phần đang soạn (chưa lưu)?')) return; S.ed = S.sf = S.imp = null }
+  if (busy() && !t.closest('#edbox') && !('signout' in D)) { if (!confirm('Bỏ phần đang soạn (chưa lưu)?')) return; S.ed = S.sf = S.imp = S.mv = null }
   if (D.ky) { S.ky = D.ky; S.doc = null; render(); return }
   if (D.doc) { S.doc = D.doc; S.pid = null; S.dall = false; render(); scrollTo(0,0); return }
   if ('alldocs' in D) { S.doc = null; S.pid = null; S.dall = false; render(); return }
@@ -1754,6 +1884,12 @@ document.addEventListener('click', async e => {
   if (D.edkey) { S.ed.ans = S.ed.ans === D.edkey ? '' : D.edkey; t.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.edkey === S.ed.ans)); return }
   if (D.edds) { const i = +D.edds; S.ed.dsk[i] = D.edv; t.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); return }
   if (D.edpm) { S.ed.pm = D.edpm; t.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); return }
+  if ('pickmode' in D) { S.pickMode = !S.pickMode; render(); return }
+  if ('mv' in D) { openMove([...S.sel]); return }
+  if (D.pmv) { openMove([D.pmv]); return }
+  if ('mvcancel' in D) { S.mv = null; render(); return }
+  if ('mvsave' in D) { t.disabled = true; await mvSave(); if (t.isConnected) t.disabled = false; return }
+  if (D.mvk) { S.mv.k = D.mvk; S.mv.a = S.mv.b = S.mv.d = ''; mvDefaults(); mvDraw(); return }
   if (D.pedit) { openEditor(D.pedit); return }
   if (D.padd) { addEditor(D.padd, D.ptyp); return }
   if (D.pdel) { if (!t.dataset.sure) { t.dataset.sure = 1; t.textContent = 'Bấm lần nữa để xoá hẳn'; setTimeout(()=>{ if (t.isConnected) { delete t.dataset.sure; t.textContent = '🗑 Xoá bài' } }, 4000); return }
@@ -1776,6 +1912,7 @@ document.addEventListener('click', async e => {
   if ('dssubmit' in D) { const P = S.cache[(S.asgId||'')+'/'+S.pid]; const pk = S.pick[S.pid] || {}; const a = P.items.map(it=>pk[it.k]);
     const rec = {a}; if (P.ans) { rec.s = a.join('') === P.ans ? 1 : 3; rec.sc = a.filter((v,i)=>v===P.ans[i]).length; record(S.pid, rec) } else { S.prog.done = S.prog.done||{}; S.prog.done[S.pid] = {a, s:0} }
     delete S.pick[S.pid]; loadProb(); return }
+  if (D.pid && S.pickMode && isStaff() && t.classList.contains('chip')) { S.sel.has(D.pid) ? S.sel.delete(D.pid) : S.sel.add(D.pid); t.classList.toggle('sel', S.sel.has(D.pid)); renderTray(); return }
   if (D.pid) { openPid(D.pid); return }
   if (D.apid) { S.asgId = D.aid; S.pid = D.apid; S.openSol = false; render(); scrollTo(0,0); return }
   if ('back' in D) { S.pid = null; render(); return }
@@ -1812,6 +1949,8 @@ document.addEventListener('change', e => { const t = e.target;
   if (t.id === 'imp' && t.files[0]) importData(t.files[0]);
   if (t.id === 'edfile' && t.files[0] && S._edT) edImage(t.files[0], S._edT.name, S._edT.mode);
   if (t.id === 'edlv' && S.ed) S.ed.lv = t.value;
+  if (t.dataset.mvsel && S.mv) { const k = t.dataset.mvsel; S.mv[k] = t.value; if (k === 'a') { S.mv.b = ''; S.mv.d = '' } if (k === 'b') S.mv.d = ''; mvDefaults(); mvDraw(); return }
+  if (t.dataset.mvy && S.mv) { S.mv.y[t.dataset.mvy] = t.value; const op = t.closest('details') && t.closest('details').open; mvDraw(); if (op) { const el = document.querySelector(`[data-mvy="${t.dataset.mvy}"]`); if (el) el.closest('details').open = true } return }
   if (t.id === 'dsol') { S.dsol = t.checked; render() }
   if (t.dataset.sfsel && S.sf) S.sf.f[t.dataset.sfsel] = t.value;
   if (t.id === 'sffile' && S.sf) { S.sf.file = t.files[0] || null; sfDraw() }
@@ -1823,6 +1962,8 @@ document.addEventListener('paste', e => { if (!S.ed || !e.target.closest) return
   if (ta.id === 'edall') { e.preventDefault(); if (it) edImage(it.getAsFile(), '*', 'ocr'); return }
   if (!it || cd.getData('text/plain').trim()) return;
   e.preventDefault(); edImage(it.getAsFile(), ta.dataset.ef, S.ed.pm === 'ocr' && aiOn() ? 'ocr' : 'img') });
+document.addEventListener('input', e => { if (e.target.dataset && 'mvnew' in e.target.dataset && S.mv) S.mv.newd = e.target.value });
+document.addEventListener('click', e => { if (e.target.tagName === 'SELECT' && e.target.closest('summary')) e.preventDefault() }, true);
 document.addEventListener('input', e => { const x = e.target;
   if (S.ed && x.dataset && x.dataset.ef) { edInput(x.dataset.ef, x.value); return }
   if (S.sf && x.dataset && x.dataset.sf) { S.sf.f[x.dataset.sf] = x.value; return }
