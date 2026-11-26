@@ -380,6 +380,12 @@ details.lt{margin:10px 0 4px}details.lt summary{font-weight:600}
 .simq{margin-top:12px;background:var(--paper,#fff)}
 .simq>b{display:block;margin-bottom:6px}
 .linkb{background:none;border:0;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit}
+/* kéo thả sắp xếp */
+.dd-ghost{position:fixed;z-index:9999;pointer-events:none;margin:0;opacity:.95;box-shadow:0 12px 32px rgba(22,48,42,.28);transform:rotate(-1deg) scale(1.02);background:var(--card,#fff);border-radius:10px}
+.dd-src{opacity:.35;outline:2px dashed var(--accent,#F2C14E);outline-offset:-2px}
+body.dd-on, body.dd-on *{cursor:grabbing!important;user-select:none!important;-webkit-user-select:none!important}
+.ddhint{font-size:12.5px;margin:2px 0 6px}
+@media (pointer:coarse){ .dg[data-bai],.dg[data-dang],.tc[data-ch],.tc[data-topic]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none} }
 
 </style>
 </head>
@@ -615,7 +621,7 @@ function renderLearn(){
     $('#app').innerHTML = wrap1(`<div class="paper"><div class="row sp"><div><div class="kick">Toán ${S.grade}</div><h1>${staff?'Kho bài tự luận':'Tự luận theo chủ đề'}</h1></div>${isAdminR()?'<button class="btn pri" data-sfnew="topic">+ Thêm chủ đề</button>':''}</div>${plan}${topicGroups(cards)}</div>`, 1300); return }
   const T = topicById(S.topic); if (!S.dang || !T.dangs.some(d=>d.id===S.dang)) S.dang = T.dangs[0] ? T.dangs[0].id : null;
   const d = T.dangs.find(x=>x.id===S.dang);
-  const side = `<button class="back" data-alltopics>← Tất cả chủ đề</button><h3>${esc(T.name)}</h3>${isAdminR()?`<button class="mini" data-sfedit="topic" data-ref="${T.id}">✏️ Sửa chủ đề</button>`:''}` + T.dangs.map((x,i) => { const n = x.items.length, done = x.items.filter(p=>stat(S.prog,p[0])).length;
+  const side = `<button class="back" data-alltopics>← Tất cả chủ đề</button><h3>${esc(T.name)}</h3>${isAdminR()?`<button class="mini" data-sfedit="topic" data-ref="${T.id}">✏️ Sửa chủ đề</button>`:''}${isAdminR()?'<p class="hint ddhint">Nhấn giữ rồi kéo để đổi thứ tự.</p>':''}` + T.dangs.map((x,i) => { const n = x.items.length, done = x.items.filter(p=>stat(S.prog,p[0])).length;
     const gh = x.grp && (i === 0 || T.dangs[i-1].grp !== x.grp) ? `<p class="dgrp">${M(x.grp)}</p>` : '';
     return gh + `<button class="dg" data-dang="${x.id}" aria-current="${S.dang===x.id}">${x.grp ? '' : `Dạng ${i+1}. `}${M(x.name)}<small>${n} bài${staff?'':' · đã làm '+done}</small>${staff?'':`<div class="meter"><i style="width:${n?done/n*100:0}%"></i></div>`}</button>` }).join('') + (isAdminR()?`<button class="dg add" data-sfnew="dang" data-ref="${T.id}">+ Thêm dạng</button>`:'');
   const main = busy() ? '<div class="paper" id="edbox"></div>' : S.pid && !S.asgId ? probShell() : d ? dangHTML(T, d) : `<div class="paper"><h1>${esc(T.name)}</h1><p class="empty">Chủ đề chưa có dạng nào.</p></div>`;
@@ -725,7 +731,7 @@ function renderTN(){
     $('#app').innerHTML = wrap1(`<div class="paper"><div class="row sp"><div><div class="kick">Toán ${S.grade}</div><h1>${staff?'Kho trắc nghiệm':'Trắc nghiệm theo chương'}</h1></div>${isAdminR()?'<button class="btn pri" data-sfnew="ch">+ Thêm chương</button>':''}</div><p class="hint">Ba dạng câu hỏi theo cấu trúc mới: nhiều lựa chọn, đúng/sai, trả lời ngắn. Mỗi câu có mức độ Nhận biết – Thông hiểu – Vận dụng – Vận dụng cao.</p><div class="topics">${cards}</div></div>`, 1300); return }
   const C = chById(S.ch); if (!S.bai || !C.bais.some(b=>b.id===S.bai)) S.bai = C.bais[0] ? C.bais[0].id : null;
   const B = C.bais.find(b=>b.id===S.bai);
-  const side = `<button class="back" data-allch>← Tất cả chương</button><h3>${esc(C.name)}</h3>${isAdminR()?`<button class="mini" data-sfedit="ch" data-ref="${C.id}">✏️ Sửa chương</button>`:''}` + C.bais.map(b => { const its = b.dangs.flatMap(d=>d.items), done = its.filter(x=>stat(S.prog,x[0])).length;
+  const side = `<button class="back" data-allch>← Tất cả chương</button><h3>${esc(C.name)}</h3>${isAdminR()?`<button class="mini" data-sfedit="ch" data-ref="${C.id}">✏️ Sửa chương</button>`:''}${isAdminR()?'<p class="hint ddhint">Nhấn giữ rồi kéo để đổi thứ tự.</p>':''}` + C.bais.map(b => { const its = b.dangs.flatMap(d=>d.items), done = its.filter(x=>stat(S.prog,x[0])).length;
     return `<button class="dg" data-bai="${b.id}" aria-current="${S.bai===b.id}">${M(esc(b.name))}<small>${its.length} câu${staff?'':' · đã làm '+done}</small>${staff?'':`<div class="meter"><i style="width:${its.length?done/its.length*100:0}%"></i></div>`}</button>` }).join('') + (isAdminR()?`<button class="dg add" data-sfnew="bai" data-ref="${C.id}">+ Thêm bài học</button>`:'');
   const main = busy() ? '<div class="paper" id="edbox"></div>' : S.pid && !S.asgId ? probShell() : B ? baiHTML(C, B) : `<div class="paper"><h1>${esc(C.name)}</h1><p class="empty">Chương chưa có bài học.</p></div>`;
   $('#app').innerHTML = `<div class="wrap"><aside class="side">${side}</aside><section id="main">${main}</section></div>`;
@@ -734,15 +740,15 @@ function renderTN(){
 function baiHTML(C, B){
   const staff = isStaff();
   const th = S.tnth[B.id];
-  const dangs = B.dangs.map((d,i) => { const n = tnCounts(d.items); let ty = S.ttyp; if (!n[ty]) ty = ['mc','ds','tln'].find(t=>n[t]) || 'mc';
+  const adm = isAdminR(); const dangs = B.dangs.map((d,i) => { const n = tnCounts(d.items); let ty = (S.ttypD && S.ttypD[d.id]) || S.ttyp; if (!n[ty] && !(adm && S.ttypD && S.ttypD[d.id] === ty)) ty = ['mc','ds','tln'].find(t=>n[t]) || ty || 'mc';
     const list = d.items.filter(x=>x[1]===ty);
     const chips = list.map((x,k) => { const p = x[0], s = staff ? 0 : stat(S.prog,p), lk = !canSee(p);
       return `<button class="chip ${s?'s'+s:''} ${lk?'lock':''} ${staff&&S.sel.has(p)?'sel':''}" data-pid="${p}" title="${x[3]?LVN[x[3]]:''}">${k+1}</button>` }).join('');
     const meth = th && th.methods && th.methods[d.id];
     return `<div class="card"><div class="row sp"><h3>Dạng ${i+1}. ${M(esc(d.name))}</h3>${isAdminR()?`<button class="mini" data-sfedit="tdang" data-ref="${d.id}">✏️ Sửa</button>`:''}</div>${meth&&meth.length?`<details class="ex"><summary>Phương pháp giải</summary>${paras(meth)}</details>`:''}
-      <div class="seg" role="group">${['mc','ds','tln'].map(t=>`<button data-ttyp="${t}" aria-pressed="${t===ty}" ${n[t]?'':'disabled'}>${TYPEN[t]} (${n[t]})</button>`).join('')}</div>
+      <div class="seg" role="group">${['mc','ds','tln'].map(t=>`<button data-ttyp="${t}" data-tdang="${d.id}" aria-pressed="${t===ty}" ${n[t]||adm?'':'disabled'}>${TYPEN[t]} (${n[t]})</button>`).join('')}</div>
       ${staff?`<div class="row" style="margin-bottom:6px"><button class="btn sm" data-pickmode aria-pressed="${!!S.pickMode}">☑ Chọn từng câu</button><button class="btn sm" data-selall="${d.id}" data-styp="${ty}">Chọn tất cả</button><button class="btn sm" data-rand="${d.id}" data-styp="${ty}">Chọn ngẫu nhiên 5 câu</button>${isAdminR()?`<button class="btn sm pri" data-padd="${d.id}" data-ptyp="${ty}">+ Thêm câu ${TYPEN[ty].toLowerCase()}</button><button class="btn sm" data-impdang="${d.id}">📄 Nhập từ file</button>`:''}</div>`:''}
-      <div class="chips">${chips}</div></div>` }).join('');
+      <div class="chips">${chips || `<span class="hint" style="grid-column:1/-1">Dạng này chưa có câu ${TYPEN[ty].toLowerCase()}.${adm ? ' Bấm "+ Thêm câu ' + TYPEN[ty].toLowerCase() + '" để thêm.' : ''}</span>`}</div></div>` }).join('');
   const legend = staff ? '' : `<div class="legend"><span class="l1">Đúng</span><span class="l3">Sai</span><span>Chưa làm</span>${isFull()?'':'<span>🔒 Gói Full</span>'}</div>`;
   return `<div class="paper"><div class="row sp"><div class="kick">${esc(C.name)}</div>${isAdminR()?`<span class="row" style="gap:6px"><button class="mini" data-sfedit="bai" data-ref="${B.id}">✏️ Sửa bài học</button><button class="mini" data-sfnew="tdang" data-ref="${B.id}">+ Thêm dạng</button></span>`:''}</div><h1>${M(esc(B.name))}</h1>
     <details class="ex" id="thbox"><summary>Tóm tắt lí thuyết</summary><div id="thbody">${th?paras(th.theory):'<p class="hint">Đang tải…</p>'}</div></details>${legend}${dangs}</div>`;
@@ -1072,18 +1078,34 @@ Quy tắc: mỗi đoạn/câu một dòng; mọi công thức, kí hiệu, số 
 const OCR_ALL = y => `Ảnh là một câu/bài toán lớp 9 (tiếng Việt). Trả về DUY NHẤT một đối tượng JSON, không giải thích, theo mẫu:
 {"de": "đề bài", ${y==='mc'?'"phuong_an": ["nội dung A","nội dung B","nội dung C","nội dung D"], "dap_an": "A|B|C|D hoặc rỗng", ':y==='ds'?'"y": ["ý a","ý b","ý c","ý d"], "dap_an": "chuỗi 4 kí tự Đ/S, ví dụ ĐSĐĐ, hoặc rỗng", ':y==='tln'?'"dap_an": "kết quả số hoặc rỗng", ':''}"loi_giai": "lời giải nếu có trong ảnh, không có thì rỗng"}
 Trong mỗi chuỗi: xuống dòng bằng \\n giữa các đoạn; công thức viết LaTeX trong $...$ (nhớ nhân đôi dấu \\ cho đúng JSON); chữ đậm **...**; chỗ có hình vẽ ghi [HÌNH]. Phương án không kèm chữ "A." đầu dòng. Chép đúng như ảnh, không tự giải.`;
+// gọi Gemini: máy chủ quá tải (503/429) thì đợi rồi thử lại, sau đó đổi sang model nhẹ hơn
+const busyErr = (st, m) => st === 503 || st === 429 || st === 500 || /high demand|overload|UNAVAILABLE|RESOURCE_EXHAUSTED|try again/i.test(m || '');
+async function gemini(body, onMsg){ const c = aiCfg(); const models = [...new Set([c.model || 'gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite'])];
+  let last = '';
+  for (const md of models) for (let k = 0; k < 2; k++) {
+    if (onMsg && (k || md !== models[0])) onMsg(`AI đang bận, thử lại${md !== models[0] ? ' với ' + md : ''}…`);
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(md)}:generateContent`, {method:'POST', headers:{'content-type':'application/json','x-goog-api-key':c.key}, body: JSON.stringify(body)});
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) return ((j.candidates||[])[0]?.content?.parts||[]).map(x=>x.text||'').join('');
+    last = (j.error && j.error.message) || ('lỗi ' + r.status);
+    if (r.status === 404 && md !== models[0]) break;
+    if (!busyErr(r.status, last)) throw new Error(last);
+    await new Promise(ok => setTimeout(ok, k ? 4000 : 2000)) }
+  throw new Error('Máy chủ AI đang quá tải, thử lại sau ít phút. (' + last + ')') }
+async function claudeCall(body){ const c = aiCfg(); let last = '';
+  for (let k = 0; k < 3; k++) {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {method:'POST', headers:{'content-type':'application/json','x-api-key':c.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}, body: JSON.stringify({model: c.model || 'claude-sonnet-5-5', ...body})});
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) return (j.content||[]).map(x=>x.text||'').join('');
+    last = (j.error && j.error.message) || ('lỗi ' + r.status);
+    if (!(r.status === 529 || busyErr(r.status, last))) throw new Error(last);
+    await new Promise(ok => setTimeout(ok, 2000 * (k + 1))) }
+  throw new Error('Máy chủ AI đang quá tải, thử lại sau ít phút. (' + last + ')') }
 async function aiRead(dataUrl, all){
   const c = aiCfg(); if (!c.key) throw new Error('chưa nhập khoá AI');
   const b64 = dataUrl.split(',')[1], prompt = all ? OCR_ALL(S.ed.y) : OCR_TXT; let txt = '';
-  if (c.prov === 'claude') {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {method:'POST', headers:{'content-type':'application/json','x-api-key':c.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body: JSON.stringify({model: c.model || 'claude-sonnet-5-5', max_tokens: 4096, messages:[{role:'user', content:[{type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}}, {type:'text', text:prompt}]}]})});
-    const j = await r.json(); if (!r.ok) throw new Error((j.error && j.error.message) || r.status); txt = (j.content||[]).map(x=>x.text||'').join('');
-  } else {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(c.model || 'gemini-flash-latest')}:generateContent`, {method:'POST', headers:{'content-type':'application/json','x-goog-api-key':c.key},
-      body: JSON.stringify({contents:[{parts:[{text:prompt}, {inline_data:{mime_type:'image/jpeg', data:b64}}]}], generationConfig:{temperature:0, ...(all?{responseMimeType:'application/json'}:{})}})});
-    const j = await r.json(); if (!r.ok) throw new Error((j.error && j.error.message) || r.status);
-    txt = ((j.candidates||[])[0]?.content?.parts||[]).map(x=>x.text||'').join('') }
+  if (c.prov === 'claude') txt = await claudeCall({max_tokens: 4096, messages:[{role:'user', content:[{type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}}, {type:'text', text:prompt}]}]});
+  else txt = await gemini({contents:[{parts:[{text:prompt}, {inline_data:{mime_type:'image/jpeg', data:b64}}]}], generationConfig:{temperature:0, ...(all?{responseMimeType:'application/json'}:{})}});
   txt = txt.replace(/^\s*```[a-z]*\s*|\s*```\s*$/g, '');
   if (!all) return txt;
   const a = txt.indexOf('{'), b = txt.lastIndexOf('}'); return JSON.parse(txt.slice(a, b+1)) }
@@ -1486,12 +1508,8 @@ async function aiReadDoc(file, kind){
   const b64 = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = no; r.readAsDataURL(file) });
   const mime = file.type || (/\.pdf$/i.test(file.name) ? 'application/pdf' : 'image/png'); let txt = '';
   if (c.prov === 'claude') { const isPdf = mime === 'application/pdf';
-    const r = await fetch('https://api.anthropic.com/v1/messages', {method:'POST', headers:{'content-type':'application/json','x-api-key':c.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body: JSON.stringify({model: c.model || 'claude-sonnet-5-5', max_tokens: 32000, messages:[{role:'user', content:[isPdf ? {type:'document', source:{type:'base64', media_type:'application/pdf', data:b64}} : {type:'image', source:{type:'base64', media_type:mime, data:b64}}, {type:'text', text:AI_DOC(kind)}]}]})});
-    const j = await r.json(); if (!r.ok) throw new Error((j.error && j.error.message) || r.status); txt = (j.content||[]).map(x => x.text||'').join('') }
-  else { const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(c.model || 'gemini-flash-latest')}:generateContent`, {method:'POST', headers:{'content-type':'application/json','x-goog-api-key':c.key},
-      body: JSON.stringify({contents:[{parts:[{text:AI_DOC(kind)}, {inline_data:{mime_type:mime, data:b64}}]}], generationConfig:{temperature:0, responseMimeType:'application/json', maxOutputTokens:65536}})});
-    const j = await r.json(); if (!r.ok) throw new Error((j.error && j.error.message) || r.status); txt = ((j.candidates||[])[0]?.content?.parts||[]).map(x => x.text||'').join('') }
+    txt = await claudeCall({max_tokens: 32000, messages:[{role:'user', content:[isPdf ? {type:'document', source:{type:'base64', media_type:'application/pdf', data:b64}} : {type:'image', source:{type:'base64', media_type:mime, data:b64}}, {type:'text', text:AI_DOC(kind)}]}]}) }
+  else txt = await gemini({contents:[{parts:[{text:AI_DOC(kind)}, {inline_data:{mime_type:mime, data:b64}}]}], generationConfig:{temperature:0, responseMimeType:'application/json', maxOutputTokens:65536}});
   txt = txt.replace(/^\s*```[a-z]*\s*|\s*```\s*$/g, ''); const a = txt.indexOf('{'), b = txt.lastIndexOf('}');
   let J; try { J = JSON.parse(txt.slice(a, b + 1)) } catch(e) { throw new Error('AI trả về dữ liệu không đọc được (tệp có thể quá dài; thử chia nhỏ tệp)') }
   const s = v => String(v ?? '').trim();
@@ -1716,7 +1734,7 @@ function docHTML(D, K){ const staff = isStaff(), adm = isAdminR(); let no = 0;
       return `<button class="chip ${s?'s'+s:''} ${lk?'lock':''} ${staff&&S.sel.has(p)?'sel':''}" data-pid="${p}" title="${TYPEN[x[1]]}">${no}</button>` }).join('');
     return `<div class="card"><div class="row sp"><h3>${M(esc(sc.name))}</h3>${adm?`<button class="mini" data-sfedit="sec" data-ref="${sc.id}">✏️ Sửa phần</button>`:''}</div>
       ${adm?`<div class="row" style="margin:6px 0">${['tl','mc','ds','tln'].map(t => `<button class="btn sm" data-padd="${sc.id}" data-ptyp="${t}">+ ${TYPEN[t]}</button>`).join('')}<button class="btn sm" data-impdang="${sc.id}">📄 Nhập từ file</button></div>`:''}
-      <div class="chips">${chips || '<span class="hint">Chưa có câu nào.</span>'}</div></div>` }).join('');
+      <div class="chips">${chips || '<span class="hint" style="grid-column:1/-1">Chưa có câu nào.</span>'}</div></div>` }).join('');
   const meta = [K.ky ? KY[D.ky] : D.year, D.place, D.time ? D.time + ' phút' : '', docItems(D).length + ' câu'].filter(Boolean).map(esc).join(' · ');
   return `<div class="paper"><div class="row sp"><div class="kick">${meta}</div>${adm?`<span class="row" style="gap:6px"><button class="mini" data-sfedit="doc" data-ref="${D.id}">✏️ Sửa đề</button><button class="mini" data-sfnew="sec" data-ref="${D.id}">+ Thêm phần</button></span>`:''}</div>
     <h1>${esc(D.title)}</h1>${D.note?`<p class="hint">${esc(D.note)}</p>`:''}
@@ -1737,18 +1755,62 @@ async function loadWhole(D, K){ const box = () => document.getElementById('dall'
   box().innerHTML = `<div class="row sp noprint"><button class="btn sm" data-dall>← Về danh sách câu</button><span class="row" style="gap:8px"><label class="checks"><label><input type="checkbox" id="dsol" ${showSol?'checked':''}> Hiện đáp án và lời giải</label></label><button class="btn sm pri" data-print>🖨 In</button></span></div>
     <div class="whole"><div class="wh"><div class="hint">${esc([K.ky ? KY[D.ky] : D.year, D.place].filter(Boolean).join(' · '))}</div><h1>${esc(D.title)}</h1>${D.time?`<p class="hint">Thời gian làm bài: ${D.time} phút</p>`:''}</div>${secs}</div>` }
 
+/* ---------------- nhấn giữ, kéo thả để đổi thứ tự (Admin) ---------------- */
+const DDSEL = '.dg[data-bai], .dg[data-dang], .tc[data-ch], .tc[data-topic]';
+const ddKind = el => el.dataset.bai ? 'bai' : el.dataset.dang ? 'dang' : el.dataset.ch ? 'ch' : 'topic';
+let dd = null, ddNoClick = 0;
+function ddSibs(el){ const k = ddKind(el); return [...el.parentElement.children].filter(x => x.matches && x.matches(DDSEL) && ddKind(x) === k) }
+function ddStart(){ if (!dd || dd.on) return; const el = dd.el, r = el.getBoundingClientRect();
+  dd.on = true; dd.kind = ddKind(el); dd.before = ddSibs(el).map(x => x.dataset[dd.kind]);
+  const g = el.cloneNode(true); g.classList.add('dd-ghost'); Object.assign(g.style, {width: r.width + 'px', height: r.height + 'px', left: r.left + 'px', top: r.top + 'px'});
+  dd.dx = dd.x - r.left; dd.dy = dd.y - r.top; document.body.appendChild(g); dd.g = g; el.classList.add('dd-src'); document.body.classList.add('dd-on');
+  if (navigator.vibrate) try { navigator.vibrate(15) } catch(e) {} }
+function ddMove(x, y){ const g = dd.g; g.style.left = (x - dd.dx) + 'px'; g.style.top = (y - dd.dy) + 'px';
+  const over = document.elementFromPoint(x, y), tg = over && over.closest(DDSEL);
+  if (tg && tg !== dd.el && tg.parentElement === dd.el.parentElement && ddKind(tg) === dd.kind) {
+    const r = tg.getBoundingClientRect(), cs = getComputedStyle(tg.parentElement);
+    const row = cs.display.includes('grid') || (cs.display.includes('flex') && !cs.flexDirection.startsWith('column'));
+    const before = row ? x < r.left + r.width / 2 : y < r.top + r.height / 2;
+    tg.parentElement.insertBefore(dd.el, before ? tg : tg.nextSibling) }
+  const sc = dd.el.closest('.side'); const H = innerHeight;
+  if (y < 70) scrollBy(0, -12); else if (y > H - 70) scrollBy(0, 12);
+  if (sc && sc.scrollHeight > sc.clientHeight) { const sr = sc.getBoundingClientRect(); if (y < sr.top + 50) sc.scrollTop -= 12; else if (y > sr.bottom - 50) sc.scrollTop += 12 }
+  if (sc && sc.scrollWidth > sc.clientWidth) { const sr = sc.getBoundingClientRect(); if (x < sr.left + 40) sc.scrollLeft -= 12; else if (x > sr.right - 40) sc.scrollLeft += 12 } }
+function ddEnd(cancel){ if (!dd) return; clearTimeout(dd.t); const D0 = dd; dd = null; if (!D0.on) return;
+  D0.g.remove(); D0.el.classList.remove('dd-src'); document.body.classList.remove('dd-on'); ddNoClick = Date.now();
+  const ids = ddSibs(D0.el).map(x => x.dataset[D0.kind]);
+  if (cancel || ids.join() === D0.before.join()) { render(); return }
+  ddSave(D0.kind, ids, D0.el.dataset[D0.kind]) }
+function reorderSub(arr, ids){ const pos = []; arr.forEach((x, i) => { if (ids.includes(x.id)) pos.push(i) }); const by = Object.fromEntries(arr.map(x => [x.id, x])); ids.forEach((id, k) => arr[pos[k]] = by[id]) }
+async function ddSave(kind, ids, moved){ const idx = cloneIdx();
+  if (kind === 'bai') { const C = (idx.tn||[]).find(c => c.bais.some(b => b.id === moved)); reorderSub(C.bais, ids) }
+  if (kind === 'ch') reorderSub(idx.tn, ids);
+  if (kind === 'topic') reorderSub(idx.topics, ids);
+  if (kind === 'dang') { const T = idx.topics.find(t => t.dangs.some(d => d.id === moved)); reorderSub(T.dangs, ids);
+    if (T.dangs.some(d => d.grp)) { const i = T.dangs.findIndex(d => d.id === moved), d = T.dangs[i], pv = T.dangs[i-1], nx = T.dangs[i+1];
+      const g = pv && nx && pv.grp === nx.grp ? pv.grp : pv ? pv.grp : nx ? nx.grp : d.grp; if (g !== d.grp) { if (g) d.grp = g; else delete d.grp } } }
+  S.idx = S.idxs[S.grade] = idx; rebuildP(); render();
+  const ok = await safe(async () => { await S.B.set(idxPath(S.grade), idx); return true }, 'Không lưu được thứ tự mới');
+  if (ok) flash('Đã lưu thứ tự mới.') }
+document.addEventListener('pointerdown', e => { if (dd || e.button > 0 || !S.idx || !isAdminR() || busy()) return;
+  const el = e.target.closest(DDSEL); if (!el) return;
+  dd = {el, x: e.clientX, y: e.clientY, mouse: e.pointerType === 'mouse', on: false}; if (!dd.mouse) dd.t = setTimeout(ddStart, 380) });
+document.addEventListener('pointermove', e => { if (!dd) return;
+  if (!dd.on) { const far = Math.abs(e.clientX - dd.x) + Math.abs(e.clientY - dd.y) > 8; if (far) { if (dd.mouse) ddStart(); else { clearTimeout(dd.t); dd = null; return } } else return }
+  e.preventDefault(); ddMove(e.clientX, e.clientY) });
+document.addEventListener('pointerup', () => ddEnd(false));
+document.addEventListener('pointercancel', () => ddEnd(true));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && dd && dd.on) ddEnd(true) });
+document.addEventListener('touchmove', e => { if (dd && dd.on) e.preventDefault() }, {passive: false});
+document.addEventListener('contextmenu', e => { if (dd || (isAdminR() && e.target.closest && e.target.closest(DDSEL) && e.pointerType !== 'mouse' && matchMedia('(pointer:coarse)').matches)) e.preventDefault() });
+document.addEventListener('click', e => { if (Date.now() - ddNoClick < 400) { e.stopPropagation(); e.preventDefault() } }, true);
+document.addEventListener('dragstart', e => { if (e.target.closest && e.target.closest(DDSEL)) e.preventDefault() });
+
 /* ---------------- câu hỏi tương tự bằng AI ---------------- */
-async function aiJSON(prompt){
+async function aiJSON(prompt, onMsg){
   const c = aiCfg(); if (!c.key) throw new Error('chưa nhập khoá AI'); let txt = '';
-  if (c.prov === 'claude') {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {method:'POST', headers:{'content-type':'application/json','x-api-key':c.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body: JSON.stringify({model: c.model || 'claude-sonnet-5-5', max_tokens: 12000, messages:[{role:'user', content: prompt}]})});
-    const j = await r.json(); if (!r.ok) throw new Error((j.error && j.error.message) || r.status); txt = (j.content||[]).map(x=>x.text||'').join('');
-  } else {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(c.model || 'gemini-flash-latest')}:generateContent`, {method:'POST', headers:{'content-type':'application/json','x-goog-api-key':c.key},
-      body: JSON.stringify({contents:[{parts:[{text: prompt}]}], generationConfig:{temperature:0.7, responseMimeType:'application/json'}})});
-    const j = await r.json(); if (!r.ok) throw new Error((j.error && j.error.message) || r.status);
-    txt = ((j.candidates||[])[0]?.content?.parts||[]).map(x=>x.text||'').join('') }
+  if (c.prov === 'claude') txt = await claudeCall({max_tokens: 12000, messages:[{role:'user', content: prompt}]});
+  else txt = await gemini({contents:[{parts:[{text: prompt}]}], generationConfig:{temperature:0.7, responseMimeType:'application/json'}}, onMsg);
   txt = txt.replace(/^\s*```[a-z]*\s*|\s*```\s*$/g, '');
   const a = txt.indexOf('{'), b = txt.lastIndexOf('}'); if (a < 0) throw new Error('AI không trả về đúng định dạng');
   // LaTeX viết thiếu dấu \ (\frac, \times, \neq…) bị JSON hiểu thành kí tự điều khiển: nhân đôi trước khi đọc
@@ -1816,7 +1878,7 @@ function simDraw(){ const box = document.getElementById('simbox'), V = S.sim; if
 async function simRun(n){ const V = S.sim; const pid = V.pid;
   const P = S.cache[(S.asgId||'') + '/' + pid] || await getProb(pid); if (!P) return;
   V.n = n = Math.max(1, Math.min(10, n|0 || 3)); V.loading = `AI đang soạn ${n} câu…`; V.err = ''; V.items = []; V.st = []; simDraw();
-  try { const J = await aiJSON(simPrompt(P, n)); if (S.sim !== V) return;
+  try { const J = await aiJSON(simPrompt(P, n), m => { if (S.sim === V) { V.loading = m; simDraw() } }); if (S.sim !== V) return;
     const arr = Array.isArray(J) ? J : (J.cau || J.questions || []);
     V.items = arr.map(c => simShape(c, P.y)).filter(Boolean).slice(0, n);
     if (!V.items.length) V.err = 'AI không trả về câu hỏi dùng được. Bấm "Tạo lại".' }
@@ -1960,7 +2022,7 @@ function renderTray(){ if (!isStaff() || !S.sel.size || curView()==='giao') { $(
 
 /* ---------------- events ---------------- */
 const anyDang = id => allDangs(S.idx).find(d => d.id === id);
-function openPid(pid){ const m = S.P[pid]; if (m && m.g !== S.grade) { S.grade = m.g; S.idx = S.idxs[m.g] || null } S.pid = pid; S.openSol = false; if (m) { if (m.k === 'doc') { S.doc = m.t; S.dall = false; const D = docById(m.t); if (D && D.ky) S.ky = D.ky } else if (m.k === 'tn') { S.ch = m.t; S.bai = m.bai; S.ttyp = m.y } else { S.topic = m.t; S.dang = m.d } } render(); scrollTo(0,0) }
+function openPid(pid){ const m = S.P[pid]; if (m && m.g !== S.grade) { S.grade = m.g; S.idx = S.idxs[m.g] || null } S.pid = pid; S.openSol = false; if (m) { if (m.k === 'doc') { S.doc = m.t; S.dall = false; const D = docById(m.t); if (D && D.ky) S.ky = D.ky } else if (m.k === 'tn') { S.ch = m.t; S.bai = m.bai; S.ttyp = m.y; (S.ttypD = S.ttypD || {})[m.d] = m.y } else { S.topic = m.t; S.dang = m.d } } render(); scrollTo(0,0) }
 document.addEventListener('click', async e => {
   const t = e.target.closest('button'); if (!t) return; const D = t.dataset;
   if (busy() && !t.closest('#edbox') && !('signout' in D)) { if (!confirm('Bỏ phần đang soạn (chưa lưu)?')) return; S.ed = S.sf = S.imp = S.mv = null }
@@ -2014,7 +2076,7 @@ document.addEventListener('click', async e => {
   if (D.ch) { S.ch = D.ch; S.bai = null; S.pid = null; render(); scrollTo(0,0); return }
   if ('allch' in D) { S.ch = null; S.pid = null; render(); return }
   if (D.bai) { S.bai = D.bai; S.pid = null; render(); scrollTo(0,0); return }
-  if (D.ttyp) { S.ttyp = D.ttyp; render(); return }
+  if (D.ttyp) { S.ttyp = D.ttyp; if (D.tdang) (S.ttypD = S.ttypD || {})[D.tdang] = D.ttyp; render(); return }
   if (D.dsi) { const pk = S.pick[S.pid] = S.pick[S.pid] || {}; pk[D.dsi] = D.dsv; loadProb(); return }
   if ('dssubmit' in D) { const P = S.cache[(S.asgId||'')+'/'+S.pid]; const pk = S.pick[S.pid] || {}; const a = P.items.map(it=>pk[it.k]);
     const rec = {a}; if (P.ans) { rec.s = a.join('') === P.ans ? 1 : 3; rec.sc = a.filter((v,i)=>v===P.ans[i]).length; record(S.pid, rec) } else { S.prog.done = S.prog.done||{}; S.prog.done[S.pid] = {a, s:0} }
