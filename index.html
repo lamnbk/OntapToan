@@ -1932,7 +1932,12 @@ function convDoc(P, y){
   // sang trắc nghiệm: lấy nguồn dạng tự luận trước
   const src = P.y === 'tl' ? base : convDoc(P, 'tl');
   if (y === 'mc') { const r = splitChoices(src.st, true); if (r) return {...base, st: r.st, opts: r.opts, ans: (P.y === 'mc' ? P.ans : '') || keyFromSol(src.so)} }
-  if (y === 'ds') { const r = splitChoices(src.st, false); if (r) return {...base, st: r.st, items: r.opts.map(o => ({k: o.k.toLowerCase(), h: o.h})), ans: P.y === 'ds' ? (P.ans||'') : ''} }
+  if (y === 'ds') { const r = splitChoices(src.st, false); if (r) return {...base, st: r.st, items: r.opts.map(o => ({k: o.k.toLowerCase(), h: o.h})), ans: P.y === 'ds' ? (P.ans||'') : ''};
+    // không có ý a) b) c) d): lấy 4 phương án A–D làm 4 ý, phương án đúng là "Đúng", còn lại "Sai"
+    const m = P.y === 'mc' && P.opts ? {st: base.st, opts: P.opts, ans: P.ans} : (() => { const r2 = splitChoices(src.st, true); return r2 && {st: r2.st, opts: r2.opts, ans: keyFromSol(src.so)} })();
+    if (m) return {...base, st: m.st, items: m.opts.map(o => ({k: o.k.toLowerCase(), h: o.h})), ans: m.ans ? m.opts.map(o => o.k === m.ans ? 'Đ' : 'S').join('') : ''};
+    return {...base, st: src.st, items: ['a','b','c','d'].map(k => ({k, h: ''})), ans: '', blank: 1} }
+  if (y === 'mc') return {...base, st: src.st, opts: ['A','B','C','D'].map(k => ({k, h: ''})), ans: '', blank: 1};
   return {...src, ans: P.y === 'tln' ? (P.ans||'') : ''} }
 async function openMove(pids){
   const all = pids.length; pids = pids.filter(p => S.P[p] && S.P[p].g === S.grade);
@@ -1950,16 +1955,14 @@ function mvDefaults(){ const V = S.mv, I = S.idx;
   for (const p of V.pids) { const P = V.docs[p]; if (!P) continue; const cur = S.P[p].y;
     const ok = mvTypes(P); if (!V.y[p] || !ok.includes(V.y[p])) V.y[p] = V.k === 'tl' ? 'tl' : ok.includes(cur) ? cur : V.k === 'doc' && cur === 'tl' ? 'tl' : guessTN(P) } }
 function mvTypes(P){ const V = S.mv; if (V.k === 'tl') return ['tl'];
-  const src = P.y === 'tl' ? P : convDoc(P, 'tl'); const t = [];
-  if (P.y === 'mc' || splitChoices(src.st, true)) t.push('mc'); if (P.y === 'ds' || splitChoices(src.st, false)) t.push('ds'); t.push('tln');
-  if (V.k === 'doc') t.unshift('tl'); return t }
+  const t = ['mc', 'ds', 'tln']; if (V.k === 'doc') t.unshift('tl'); return t }
 function mvWhere(m){ const I = S.idx;
   if (m.k === 'tl') { const T = topicById(m.t), d = T && T.dangs.find(x => x.id === m.d); return `${esc(T ? T.name : '')} › ${M(d ? d.name : '')}` }
   if (m.k === 'tn') { const B = baiById(m.bai), d = B && B.dangs.find(x => x.id === m.d); return `${M(esc(B ? B.name : ''))} › ${M(esc(d ? d.name : ''))}` }
   const D = docById(m.t), sc = D && D.secs.find(x => x.id === m.d); return `${esc(D ? D.title : '')} › ${M(esc(sc ? sc.name : ''))}` }
 function mvDraw(){ const V = S.mv, box = $('#edbox'); if (!V || !box) return; const I = S.idx;
   const sel = (k, lab, opts) => `<div class="edf"><label for="mv_${k}"><b>${lab}</b></label><select id="mv_${k}" data-mvsel="${k}">${opts.map(([v, t]) => `<option value="${esc(v)}" ${V[k]===v?'selected':''}>${esc(t)}</option>`).join('')}</select></div>`;
-  const tx = h => htxt(h).replace(/\\\(|\\\)/g, '');
+  const tx = h => htxt(h).replace(/\\\(|\\\)/g, '').replace(/\\(left|right|displaystyle)\b/g, '').replace(/\\(frac|dfrac)\{([^{}]*)\}\{([^{}]*)\}/g, '($2)/($3)').replace(/\\cdot/g, '·').replace(/\\times/g, '×').replace(/\\[a-zA-Z]+/g, m => ({'\\le':'≤','\\ge':'≥','\\ne':'≠','\\pi':'π','\\sqrt':'√','\\circ':'°','\\Delta':'Δ','\\triangle':'△'})[m] || '');
   let dest = '';
   if (V.k === 'tl') { const T = topicById(V.a); dest = (I.topics||[]).length ? sel('a', 'Chủ đề', I.topics.map(t => [t.id, t.name])) + sel('d', 'Dạng', (T ? T.dangs : []).map((d, i) => [d.id, (d.grp ? tx(d.grp) + ' › ' : 'Dạng ' + (i+1) + '. ') + tx(d.name)]).concat([['__new', '+ Tạo dạng mới…']])) : '<p class="hint">Lớp này chưa có chủ đề tự luận. Thêm chủ đề trước.</p>' }
   if (V.k === 'tn') { const C = chById(V.a), B = baiById(V.b); dest = (I.tn||[]).length ? sel('a', 'Chương', I.tn.map(c => [c.id, c.name])) + sel('b', 'Bài học', (C ? C.bais : []).map(b => [b.id, tx(b.name)])) + (B ? sel('d', 'Dạng', B.dangs.map((d, i) => [d.id, 'Dạng ' + (i+1) + '. ' + tx(d.name)]).concat([['__new', '+ Tạo dạng mới…']])) : '<p class="hint">Chương này chưa có bài học.</p>') : '<p class="hint">Lớp này chưa có chương trắc nghiệm. Thêm chương trước.</p>' }
@@ -1971,14 +1974,15 @@ function mvDraw(){ const V = S.mv, box = $('#edbox'); if (!V || !box) return; co
     if (!P) return `<div class="mvrow"><b>${label(p)}</b> <span class="hint">Không tải được, sẽ bỏ qua.</span></div>`;
     const ty = mvTypes(P), y = V.y[p], c = convDoc(P, y);
     const opt = y === 'mc' && c.opts ? `<div class="opts sm">${c.opts.map(o => `<div class="opt ${c.ans===o.k?'ok':''}"><b>${o.k}</b><span>${M(o.h)}</span></div>`).join('')}</div>${c.ans ? '' : '<p class="hint">Chưa thấy đáp án: học sinh xem lời giải rồi tự chấm. Có thể chọn đáp án sau bằng "Sửa bài".</p>'}`
-      : y === 'ds' && c.items ? `<div class="opts sm">${c.items.map(o => `<div class="opt"><b>${o.k}</b><span>${M(o.h)}</span></div>`).join('')}</div>` : '';
-    return `<details class="mvrow"><summary><b>${label(p)}</b> <span class="tag ${isTN(m.y)?'tn':''}">${TYPEN[m.y]}</span> → ${ty.length > 1 ? `<select data-mvy="${p}" style="width:auto;min-height:30px;padding:2px 8px;font-size:13px">${ty.map(t => `<option value="${t}" ${t===y?'selected':''}>${TYPEN[t]}</option>`).join('')}</select>` : `<span class="tag ${isTN(y)?'tn':''}">${TYPEN[y]}</span>`} <span class="hint">${esc(tx((P.st[0]||{}).h).slice(0, 90))}</span></summary>
-      <p class="hint">Đang ở: ${mvWhere(m)}</p><div class="pq">${paras(c.st)}${opt}</div></details>` }).join('');
+      : y === 'ds' && c.items ? `<div class="opts sm">${c.items.map((o, i) => `<div class="opt ${c.ans && c.ans[i]==='Đ'?'ok':''}"><b>${o.k}</b><span>${M(o.h)}</span>${c.ans ? `<span class="tag">${c.ans[i]==='Đ'?'Đúng':'Sai'}</span>` : ''}</div>`).join('')}</div>` : '';
+    const warn = c.blank ? `<p class="hint" style="color:var(--bad,#b3261e)">Đề chưa có sẵn ${y === 'ds' ? '4 ý a), b), c), d)' : '4 phương án A, B, C, D'}: sau khi chuyển, bấm "Sửa bài" để soạn thêm.</p>` : y === 'ds' && !c.ans ? '<p class="hint">Chưa có đáp án Đúng/Sai cho từng ý: chọn sau bằng "Sửa bài".</p>' : '';
+    return `<details class="mvrow"><summary><b>${label(p)}</b> <span class="tag ${isTN(m.y)?'tn':''}">${TYPEN[m.y]}</span> → ${ty.length > 1 ? `<select data-mvy="${p}" style="width:auto;min-height:30px;padding:2px 8px;font-size:13px">${ty.map(t => `<option value="${t}" ${t===y?'selected':''}>${TYPEN[t]}</option>`).join('')}</select>` : `<span class="tag ${isTN(y)?'tn':''}">${TYPEN[y]}</span>`} ${c.blank ? '<span class="tag" style="background:#fde8e6;color:#9b1c13">cần soạn thêm</span>' : ''}<span class="hint">${esc(tx((P.st[0]||{}).h).slice(0, 90))}</span></summary>
+      <p class="hint">Đang ở: ${mvWhere(m)}</p><div class="pq">${paras(c.st)}${opt}</div>${warn}</details>` }).join('');
   box.innerHTML = `<div class="row sp"><button class="btn sm" data-mvcancel>← Huỷ</button><span class="src">Toán ${S.grade}</span></div>
     <h1 style="margin-top:14px">Chuyển ${V.pids.length} bài sang mục khác</h1>${V.skipped ? `<p class="hint">Bỏ qua ${V.skipped} bài của lớp khác.</p>` : ''}
     <div class="edf"><b>Chuyển vào</b><div class="seg" role="group">${Object.entries(MVK).map(([k, t]) => `<button type="button" data-mvk="${k}" aria-pressed="${V.k===k}">${t}</button>`).join('')}</div></div>
     ${dest}
-    <div class="card"><b>Kiểu câu sau khi chuyển</b><p class="hint">${V.k === 'tl' ? 'Câu trắc nghiệm chuyển sang tự luận: các phương án được ghi vào cuối đề, đáp án ghi vào đầu lời giải.' : 'Bài tự luận có sẵn 4 phương án A, B, C, D trong đề sẽ thành câu nhiều lựa chọn (đáp án lấy từ dòng "Chọn …" trong lời giải); có 4 ý a), b), c), d) thì thành câu đúng/sai; còn lại thành câu trả lời ngắn. Bấm vào từng bài để xem trước hoặc đổi kiểu.'}</p>
+    <div class="card"><b>Kiểu câu sau khi chuyển</b><p class="hint">${V.k === 'tl' ? 'Câu trắc nghiệm chuyển sang tự luận: các phương án được ghi vào cuối đề, đáp án ghi vào đầu lời giải.' : 'Bài tự luận có sẵn 4 phương án A, B, C, D trong đề sẽ thành câu nhiều lựa chọn (đáp án lấy từ dòng "Chọn …" trong lời giải); có 4 ý a), b), c), d) thì thành câu đúng/sai; còn lại thành câu trả lời ngắn. Bấm vào từng bài để xem trước hoặc đổi kiểu. Đổi câu nhiều lựa chọn sang đúng/sai: 4 phương án A–D thành 4 ý a–d, phương án đúng là "Đúng", các phương án khác là "Sai".'}</p>
       <p>${Object.entries(cnt).map(([y, n]) => `<span class="tag ${isTN(y)?'tn':''}">${TYPEN[y]}: ${n}</span>`).join(' ')}${nokey ? ` <span class="hint">· ${nokey} câu nhiều lựa chọn chưa có đáp án</span>` : ''}</p></div>
     <div class="mvlist">${rows}</div>
     <div class="row" style="margin-top:16px"><button class="btn pri" data-mvsave ${V.loading?'disabled':''}>↪ Chuyển ${V.pids.length} bài</button><button class="btn" data-mvcancel>Huỷ</button><span id="mvst" class="hint"></span></div>` }
@@ -1998,7 +2002,7 @@ async function mvSave(){ const V = S.mv, st = $('#mvst'), idx = cloneIdx(); idx.
   for (const p of moved) { const m = S.P[p], P = V.docs[p], y = V.y[p];
     const sd = findDang(idx, m.d); if (sd) { const i = sd.items.findIndex(x => x[0] === p); if (i >= 0) sd.items.splice(i, 1); srcD.add(sd) }
     const lv = P.lv || m.lv || 'NB';
-    const doc = {...base, d: dest.id, y, ...convDoc(P, y)}; if (V.k !== 'tl' && (V.k === 'tn' || isTN(y))) doc.lv = lv;
+    const doc = {...base, d: dest.id, y, ...convDoc(P, y)}; delete doc.blank; if (V.k !== 'tl' && (V.k === 'tn' || isTN(y))) doc.lv = lv;
     newDocs[p] = doc; dest.items.push(V.k === 'tl' ? [p, y, 0] : [p, y, 0, lv]) }
   const flagCh = new Set(); for (const d of [...srcD, dest]) reflag(d, S.cfg.basicN).forEach(p => flagCh.add(p));
   const it = {}; for (const d of [...srcD, dest]) d.items.forEach(x => it[x[0]] = x);
