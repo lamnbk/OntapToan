@@ -685,7 +685,7 @@ async function loadProb(){
   const solBtn = P.so && P.so.length ? (solLocked ? `<button class="btn" disabled>🔒 ${isTN(P.y)?'Trả lời':'Tự đánh giá'} trước rồi xem lời giải</button>` : `<button class="btn" data-sol>${S.openSol?'Ẩn lời giải':'Lời giải'}</button>`) : `<span class="hint">Chưa có lời giải trong tài liệu gốc.</span>`;
   const sel = (staff ? `<div class="checks"><label><input type="checkbox" data-pick="${pid}" ${S.sel.has(pid)?'checked':''}> Chọn để giao</label></div>` : '')
     + (isAdminR() && !a ? `<button class="btn sm" data-pedit="${pid}">✏️ Sửa bài</button><button class="btn sm red" data-pdel="${pid}">🗑 Xoá bài</button>` : '');
-  const assess = needSelf ? `<p class="hint" style="margin-top:14px">${isTN(P.y)?'Câu này chưa có đáp án để chấm tự động. Xem lời giải rồi tự chấm:':'Tự đánh giá:'}</p><div class="assess" role="group" aria-label="Tự đánh giá">${(isTN(P.y)?[[1,'Mình làm đúng'],[3,'Mình làm sai']]:[[1,ST[1]],[2,ST[2]],[3,ST[3]]]).map(([n,t])=>`<button class="a${n}" data-as="${n}" aria-pressed="${s===n}">${t}</button>`).join('')}</div>` : '';
+  const assess = needSelf ? `<p class="hint" style="margin-top:14px">${isTN(P.y)?'Đáp án nằm trong lời giải: bấm <b>Lời giải</b> để đối chiếu, rồi tự chấm:':'Tự đánh giá:'}</p><div class="assess" role="group" aria-label="Tự đánh giá">${(isTN(P.y)?[[1,'Mình làm đúng'],[3,'Mình làm sai']]:[[1,ST[1]],[2,ST[2]],[3,ST[3]]]).map(([n,t])=>`<button class="a${n}" data-as="${n}" aria-pressed="${s===n}">${t}</button>`).join('')}</div>` : '';
   box().innerHTML = `${head(P.src)}${body}<div class="row" style="margin-top:14px">${solBtn}${sel}</div>${S.openSol && !solLocked ? `<div class="sol pq"><h4>Lời giải</h4>${paras(P.so)}</div>` : ''}${assess}${nav}`;
 }
 
@@ -872,21 +872,41 @@ function renderAdmin(){
    <div class="card"><h3>Gói Cơ bản</h3><form id="planf" class="row"><label for="bn">Mở</label><input type="number" id="bn" class="num-in" min="0" max="300" value="${S.cfg.basicN}"><span>câu đầu <b>mỗi loại</b> (tự luận / nhiều lựa chọn / đúng-sai / trả lời ngắn) của từng dạng</span><button class="btn sm pri" ${total?'':'disabled'}>Áp dụng</button></form>
    <p class="hint">Hiện mở ${open}/${total} bài cho Gói Cơ bản. Gói Full mở toàn bộ. Đổi số này sẽ cập nhật lại toàn bộ bài (mất 1–2 phút).</p></div>
    <div class="card"><h3>Dữ liệu theo lớp</h3>${gstat}</div>
-   <div class="card"><h3>Nạp dữ liệu bài học</h3><div class="row" style="margin-bottom:8px"><label for="impg"><b>Nạp cho</b></label><select id="impg" style="width:auto">${GRADES.map(g=>`<option value="${g}" ${g===S.grade?'selected':''}>Lớp ${g}</option>`).join('')}</select></div><p class="hint">Chọn file dữ liệu của lớp đó (ví dụ <code>du_lieu_toan9.json</code>). Nạp lớp này không ảnh hưởng lớp khác. Nếu lần trước bị dừng giữa chừng, chọn lại file là web tự nạp tiếp từ chỗ dừng. Firebase miễn phí cho 20.000 lượt ghi mỗi ngày.</p>
+   <div class="card"><h3>Nạp dữ liệu bài học</h3><div class="row" style="margin-bottom:8px"><label for="impg"><b>Nạp cho</b></label><select id="impg" style="width:auto">${GRADES.map(g=>`<option value="${g}" ${g===S.grade?'selected':''}>Lớp ${g}</option>`).join('')}</select></div><p class="hint">Chọn file dữ liệu của lớp đó (ví dụ <code>du_lieu_toan9.json</code>), hoặc file tổng hợp <code>du_lieu_toan_tong_hop.json</code> để nạp tất cả các lớp một lần (khi đó không cần chọn lớp). Nạp lớp này không ảnh hưởng lớp khác. Nếu lần trước bị dừng giữa chừng, chọn lại file là web tự nạp tiếp từ chỗ dừng. Firebase miễn phí cho 20.000 lượt ghi mỗi ngày.</p>
    <div class="row"><input type="file" id="imp" accept=".json,application/json"><label class="checks"><label><input type="checkbox" id="impfresh"> Nạp lại từ đầu</label></label></div>
-   <div class="row" style="margin-top:8px"><button type="button" class="btn sm" data-count>Kiểm tra số bài trên máy chủ</button><span id="cnt" class="hint"></span></div><div id="impst" class="hint" style="margin-top:8px"></div></div>
+   <div class="row" style="margin-top:8px"><button type="button" class="btn sm" data-count>Kiểm tra số bài trên máy chủ</button><span id="cnt" class="hint"></span></div><div id="impst" class="hint" style="margin-top:8px">${esc(S.impMsg||'')}</div></div>
    ${aiCard()}
    <div class="card"><h3>Admin</h3><p>${ADMIN_EMAILS.map(esc).join(', ')}</p><p class="hint">Danh sách Admin đặt trong file index.html và firestore.rules.</p></div></div>`, 1000) }
 function allDangs(idx){ const L = []; (idx.topics||[]).forEach(t=>t.dangs.forEach(d=>L.push(d))); (idx.tn||[]).forEach(c=>c.bais.forEach(b=>b.dangs.forEach(d=>L.push(d)))); (idx.docs||[]).forEach(D=>D.secs.forEach(sc=>L.push(sc))); return L }
 function flagIndex(idx, n){ for (const d of allDangs(idx)) { const c = {}; for (const it of d.items) { c[it[1]] = c[it[1]] || 0; it[2] = c[it[1]] < n ? 1 : 0; c[it[1]]++ } } }
 async function importData(file){
-  const st = $('#impst'); st.textContent = 'Đang đọc file…';
-  let J; try { J = JSON.parse(await file.text()) } catch(e) { st.textContent = 'File không đúng định dạng.'; return }
-  if (!J.index || !J.problems) { st.textContent = 'File không phải dữ liệu bài học.'; return }
+  const st = $('#impst'); st.textContent = S.impMsg = 'Đang đọc file…';
+  let J; try { J = JSON.parse(await file.text()) } catch(e) { st.textContent = S.impMsg = 'File không đúng định dạng.'; return }
+  if (J.patch && J.problems) {
+    const ids = Object.keys(J.problems), ok = ids.filter(p => S.P[p]), miss = ids.length - ok.length;
+    if (!ok.length) { st.textContent = S.impMsg = `File bổ sung có ${ids.length} câu nhưng chưa câu nào có trên web (lớp đó chưa nạp dữ liệu). Khi nạp file dữ liệu đầy đủ của lớp đó thì đã có sẵn phần bổ sung.`; return }
+    st.textContent = S.impMsg = `Đang cập nhật ${ok.length} câu…`;
+    try { await batchChunks(ok.map(p => ({p: 'problems/' + p, d: {...J.problems[p], basic: !!S.P[p].basic}})), n => { st.textContent = S.impMsg = `Đang cập nhật: ${n}/${ok.length} câu…` });
+      Object.keys(S.cache).filter(k => ok.some(p => k.endsWith('/' + p))).forEach(k => delete S.cache[k]);
+      st.textContent = S.impMsg = `Xong: đã cập nhật ${ok.length} câu.` + (miss ? ` ${miss} câu thuộc lớp chưa nạp dữ liệu nên bỏ qua (file dữ liệu mới của lớp đó đã có sẵn phần sửa).` : ''); flash('Đã cập nhật bổ sung.') }
+    catch(e) { st.textContent = S.impMsg = 'Cập nhật dừng: ' + errMsg(e) + '. Chọn lại file để làm tiếp.' }
+    return }
+  if (J.grades) {
+    const gs = Object.keys(J.grades).map(Number).sort((a,b)=>b-a); const done = [];
+    for (const g of gs) { const Jg = J.grades[g]; Jg.index.grade = g;
+      const mk = await safe(() => S.B.get(impPath(g)));
+      const n = Object.keys(Jg.problems).length + Object.keys(Jg.tnth||{}).length;
+      if (mk && mk.version === (Jg.index.version||'v') && mk.n === n && !$('#impfresh').checked) { done.push(g); continue }
+      const ok = await importGrade(Jg, st, true); if (!ok) return; done.push(g) }
+    st.textContent = S.impMsg = `Xong: đã nạp đủ dữ liệu lớp ${done.sort().join(', ')}.`; flash('Nạp dữ liệu thành công.'); checkCount(); return }
+  if (!J.index || !J.problems) { st.textContent = S.impMsg = 'File không phải dữ liệu bài học.'; return }
+  return importGrade(J, st, false) }
+async function importGrade(J, st, multi){
   const g = +(J.index.grade || $('#impg').value || S.grade);
-  if (J.index.grade && +$('#impg').value !== g) { st.textContent = `File này là dữ liệu lớp ${g}, nhưng đang chọn nạp cho lớp ${$('#impg').value}. Chọn đúng lớp rồi chọn lại file.`; return }
+  const pre = multi ? `Lớp ${g}: ` : '';
+  if (!multi && J.index.grade && +$('#impg').value !== g) { st.textContent = S.impMsg = `File này là dữ liệu lớp ${g}, nhưng đang chọn nạp cho lớp ${$('#impg').value}. Chọn đúng lớp rồi chọn lại file.`; return false }
   const clash = Object.keys(J.problems).find(pid => S.P[pid] && S.P[pid].g !== g);
-  if (clash) { st.textContent = `Mã bài ${clash} đã có ở lớp ${S.P[clash].g}. File này có thể là dữ liệu của lớp khác.`; return }
+  if (clash) { st.textContent = S.impMsg = `Mã bài ${clash} đã có ở lớp ${S.P[clash].g}. File này có thể là dữ liệu của lớp khác.`; return false }
   J.index.grade = g;
   flagIndex(J.index, S.cfg.basicN);
   const bmap = {}; allDangs(J.index).forEach(d=>d.items.forEach(it=>bmap[it[0]]=!!it[2]));
@@ -896,21 +916,22 @@ async function importData(file){
   let start = 0;
   const mk = await safe(() => S.B.get(impPath(g)));
   if (mk && mk.version === ver && mk.n > 0 && mk.n < ops.length && !$('#impfresh').checked) start = mk.n;
-  st.textContent = start ? `Tiếp tục từ bài ${start}/${ops.length}…` : `Đang nạp ${ops.length} bài…`;
+  st.textContent = S.impMsg = pre + (start ? `Tiếp tục từ bài ${start}/${ops.length}…` : `Đang nạp ${ops.length} bài…`);
   try {
-    await batchChunks(ops.slice(start), async n => { const k = start + n; st.textContent = `Đang nạp: ${k}/${ops.length} bài… (đừng đóng trang)`; await S.B.set(impPath(g), {version: ver, n: k}) });
+    await batchChunks(ops.slice(start), async n => { const k = start + n; st.textContent = S.impMsg = pre + `Đang nạp: ${k}/${ops.length} bài… (đừng đóng trang)`; await S.B.set(impPath(g), {version: ver, n: k}) });
     const keepIds = new Set([...Object.keys(J.problems)]);
     const old = S.idxs[g] ? allDangs(S.idxs[g]).flatMap(d=>d.items.map(it=>it[0])).filter(p=>!keepIds.has(p)) : [];
-    if (old.length) { st.textContent = `Đang xoá ${old.length} bài cũ…`; await batchChunks(old.map(p=>({p:'problems/'+p, del:1}))) }
+    if (old.length) { st.textContent = S.impMsg = `Đang xoá ${old.length} bài cũ…`; await batchChunks(old.map(p=>({p:'problems/'+p, del:1}))) }
     await S.B.set(idxPath(g), J.index);
     await S.B.set(impPath(g), {version: ver, n: ops.length});
-    st.textContent = `Xong: đã nạp đủ ${ops.length} bài cho lớp ${g}.`; flash('Nạp dữ liệu thành công.'); checkCount();
+    if (multi) return true; st.textContent = S.impMsg = `Xong: đã nạp đủ ${ops.length} bài cho lớp ${g}.`; flash('Nạp dữ liệu thành công.'); checkCount(); return true;
   } catch(e) {
     const c = (e && e.code) || '';
     const cur = await safe(() => S.B.get(impPath(g))); const k = cur && cur.n || start;
-    st.textContent = /resource-exhausted|write-timeout/.test(c)
+    st.textContent = S.impMsg = pre + (/resource-exhausted|write-timeout/.test(c)
       ? `Đã nạp ${k}/${ops.length} bài thì hết hạn mức ghi miễn phí trong ngày của Firebase. Sau 15 giờ chiều (giờ Việt Nam) tải lại trang rồi chọn lại file để nạp tiếp phần còn lại.`
-      : `Dừng ở ${k}/${ops.length} bài (${c||e.message}). Chọn lại file để nạp tiếp từ chỗ dừng.`;
+      : `Dừng ở ${k}/${ops.length} bài (${c||e.message}). Chọn lại file để nạp tiếp từ chỗ dừng.`);
+    return false
   } }
 async function checkCount(){ const el = $('#cnt'); if (!el || !S.B.count) return; el.textContent = 'Đang đếm…';
   const n = await safe(() => S.B.count('problems')); const want = GRADES.reduce((u,g) => u + (S.idxs[g] ? allDangs(S.idxs[g]).reduce((v,d)=>v+d.items.length,0) : 0), 0);
