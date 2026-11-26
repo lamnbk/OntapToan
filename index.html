@@ -373,6 +373,13 @@ details.lt{margin:10px 0 4px}details.lt summary{font-weight:600}
 .mvrow[open]{box-shadow:0 1px 0 var(--line,#d9dccf)}
 .mvrow .pq{margin-top:8px}
 .seg [aria-pressed="true"]{}
+/* câu tương tự AI */
+.simc{margin-top:18px}
+.simc h3{margin:0}
+.simc form{margin:10px 0 4px;gap:10px}
+.simq{margin-top:12px;background:var(--paper,#fff)}
+.simq>b{display:block;margin-bottom:6px}
+.linkb{background:none;border:0;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit}
 
 </style>
 </head>
@@ -695,7 +702,8 @@ async function loadProb(){
   const sel = (staff ? `<div class="checks"><label><input type="checkbox" data-pick="${pid}" ${S.sel.has(pid)?'checked':''}> Chọn để giao</label></div>` : '')
     + (isAdminR() && !a ? `<button class="btn sm" data-pedit="${pid}">✏️ Sửa bài</button><button class="btn sm" data-pmv="${pid}">↪ Chuyển bài</button><button class="btn sm red" data-pdel="${pid}">🗑 Xoá bài</button>` : '');
   const assess = needSelf ? `<p class="hint" style="margin-top:14px">${isTN(P.y)?'Đáp án nằm trong lời giải: bấm <b>Lời giải</b> để đối chiếu, rồi tự chấm:':'Tự đánh giá:'}</p><div class="assess" role="group" aria-label="Tự đánh giá">${(isTN(P.y)?[[1,'Mình làm đúng'],[3,'Mình làm sai']]:[[1,ST[1]],[2,ST[2]],[3,ST[3]]]).map(([n,t])=>`<button class="a${n}" data-as="${n}" aria-pressed="${s===n}">${t}</button>`).join('')}</div>` : '';
-  box().innerHTML = `${head(P.src)}${body}<div class="row" style="margin-top:14px">${solBtn}${sel}</div>${S.openSol && !solLocked ? `<div class="sol pq"><h4>Lời giải</h4>${paras(P.so)}</div>` : ''}${assess}${nav}`;
+  box().innerHTML = `${head(P.src)}${body}<div class="row" style="margin-top:14px">${solBtn}${a ? '' : simBtn(pid, P)}${sel}</div>${S.openSol && !solLocked ? `<div class="sol pq"><h4>Lời giải</h4>${paras(P.so)}</div>` : ''}${assess}<div id="simbox"></div>${nav}`;
+  simDraw();
 }
 
 /* ---------------- trắc nghiệm ---------------- */
@@ -1024,7 +1032,7 @@ function edDraw(){
   if (y === 'ds') extra = ['a','b','c','d'].map((k,i) => edField('i'+i, 'Ý ' + k + ')', 2) + `<div class="seg" role="group" style="margin-top:-4px">${['Đ','S'].map(v => `<button type="button" data-edds="${i}" data-edv="${v}" aria-pressed="${E.dsk[i]===v}">${v==='Đ'?'Đúng':'Sai'}</button>`).join('')}</div>`).join('');
   if (y === 'tln') extra = edField('tans', 'Đáp án (để chấm tự động)', 1, 'Ví dụ: 3 &nbsp;·&nbsp; 1,5 &nbsp;·&nbsp; $\\frac{2}{3}$');
   const ocrAll = aiOn() ? `<div class="card edall"><b>Dán ảnh cả câu để tự điền</b><p class="hint">Chụp màn hình cả câu (đề${y==='tl'?'':', phương án'}, lời giải nếu có), bấm vào ô dưới rồi Ctrl+V. AI sẽ điền vào các ô, bạn kiểm tra lại trước khi lưu.</p><textarea id="edall" rows="2" placeholder="Bấm vào đây rồi Ctrl+V ảnh cả câu…"></textarea><div class="row" style="margin-top:6px"><button type="button" class="btn sm" data-edocr="*">Hoặc chọn ảnh từ máy</button></div></div>`
-    : `<p class="hint">Muốn dán ảnh tự chuyển thành chữ và công thức: vào <b>Gói & dữ liệu → Nhận dạng ảnh (AI)</b> để nhập khoá AI.</p>`;
+    : `<p class="hint">Muốn dán ảnh tự chuyển thành chữ và công thức: vào <b>Gói & dữ liệu → Khoá AI</b> để nhập khoá AI.</p>`;
   const paste = `<div class="row"><span class="hint">Khi dán ảnh (Ctrl+V) vào một ô:</span><div class="seg" role="group" style="margin:0"><button type="button" data-edpm="img" aria-pressed="${!(E.pm==='ocr')}">Chèn làm hình</button><button type="button" data-edpm="ocr" aria-pressed="${E.pm==='ocr'}" ${aiOn()?'':'disabled title="Cần khoá AI"'}>Chuyển thành chữ (AI)</button></div></div>`;
   const lv = E.k === 'tn' || (E.k === 'doc' && isTN(y)) ? `<div class="row"><label for="edlv"><b>Mức độ</b></label><select id="edlv" style="width:auto">${Object.entries(LVN).map(([k,v]) => `<option value="${k}" ${E.lv===k?'selected':''}>${v}</option>`).join('')}</select></div>` : '';
   const box = $('#edbox'); if (!box) return;
@@ -1125,7 +1133,7 @@ async function deleteProblem(pid){
   const ok = await safe(async () => { await batchChunks(ops); for (const a of asg) await S.B.update('assignments/'+a.id, {pids: a.pids.filter(p => p !== pid)}); await S.B.set(idxPath(m.g), idx); return true }, 'Không xoá được bài');
   if (ok) { S.pid = null; flash('Đã xoá bài.' + (asg.length ? ` Đã bỏ khỏi ${asg.length} bài giao.` : '')); render() } }
 function aiCard(){ const c = aiCfg();
-  return `<div class="card"><h3>Nhận dạng ảnh (AI)</h3><p class="hint">Dùng khi soạn bài: dán ảnh là tự chuyển thành chữ và công thức LaTeX. Khoá chỉ lưu trong trình duyệt của máy này, không gửi lên máy chủ.</p>
+  return `<div class="card"><h3>Khoá AI</h3><p class="hint">Dùng khi soạn bài (dán ảnh tự chuyển thành chữ và công thức LaTeX) và để tạo câu hỏi tương tự. Khoá chỉ lưu trong trình duyệt của máy này, không gửi lên máy chủ.</p>
    <form id="aif"><div class="row"><label for="aiprov">Dịch vụ</label><select id="aiprov" style="width:auto"><option value="gemini" ${c.prov!=='claude'?'selected':''}>Google Gemini (có gói miễn phí)</option><option value="claude" ${c.prov==='claude'?'selected':''}>Claude (Anthropic)</option></select></div>
    <div class="row" style="margin-top:8px"><input type="text" id="aikey" placeholder="Dán khoá API" value="${esc(c.key||'')}" autocomplete="off" style="flex:1 1 280px"><input type="text" id="aimodel" placeholder="Model (để trống = mặc định)" value="${esc(c.model||'')}" style="flex:0 1 240px"></div>
    <div class="row" style="margin-top:8px"><button class="btn sm pri">Lưu khoá</button>${c.key?'<button type="button" class="btn sm red" data-aidel>Xoá khoá</button>':''}<span class="hint">${c.key?'Đã có khoá.':'Chưa có khoá.'} Khoá Gemini lấy miễn phí tại aistudio.google.com → Get API key.</span></div></form></div>` }
@@ -1474,7 +1482,7 @@ const AI_DOC = (kind) => `Tệp đính kèm là tài liệu toán THCS tiếng V
 ${kind === 'tl' ? 'Đây là bài tự luận: loai luôn là "tl", bỏ trống phuong_an, y, dap_an.' : 'mc = nhiều lựa chọn (có phương án A–D), ds = đúng/sai (4 ý a–d), tln = trả lời ngắn' + (kind === 'doc' ? ', tl = tự luận. Đề có nhiều phần (Trắc nghiệm, Tự luận…): mỗi phần là một mục trong "dang", ten là tên phần.' : '.')}
 Quy tắc trong mỗi chuỗi: xuống dòng bằng \\n giữa các đoạn; mọi công thức viết LaTeX trong $...$ (nhân đôi dấu \\ cho đúng JSON); chữ đậm **...**; chỗ có hình vẽ ghi [HÌNH]. Phương án không kèm chữ "A." đầu dòng. Lời giải ghép đúng vào bài của nó. Chép đủ tất cả các bài.`;
 async function aiReadDoc(file, kind){
-  const c = aiCfg(); if (!c.key) throw new Error('file PDF cần khoá AI để đọc (vào Gói & dữ liệu → Nhận dạng ảnh (AI))');
+  const c = aiCfg(); if (!c.key) throw new Error('file PDF cần khoá AI để đọc (vào Gói & dữ liệu → Khoá AI)');
   const b64 = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = no; r.readAsDataURL(file) });
   const mime = file.type || (/\.pdf$/i.test(file.name) ? 'application/pdf' : 'image/png'); let txt = '';
   if (c.prov === 'claude') { const isPdf = mime === 'application/pdf';
@@ -1729,6 +1737,100 @@ async function loadWhole(D, K){ const box = () => document.getElementById('dall'
   box().innerHTML = `<div class="row sp noprint"><button class="btn sm" data-dall>← Về danh sách câu</button><span class="row" style="gap:8px"><label class="checks"><label><input type="checkbox" id="dsol" ${showSol?'checked':''}> Hiện đáp án và lời giải</label></label><button class="btn sm pri" data-print>🖨 In</button></span></div>
     <div class="whole"><div class="wh"><div class="hint">${esc([K.ky ? KY[D.ky] : D.year, D.place].filter(Boolean).join(' · '))}</div><h1>${esc(D.title)}</h1>${D.time?`<p class="hint">Thời gian làm bài: ${D.time} phút</p>`:''}</div>${secs}</div>` }
 
+/* ---------------- câu hỏi tương tự bằng AI ---------------- */
+async function aiJSON(prompt){
+  const c = aiCfg(); if (!c.key) throw new Error('chưa nhập khoá AI'); let txt = '';
+  if (c.prov === 'claude') {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {method:'POST', headers:{'content-type':'application/json','x-api-key':c.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify({model: c.model || 'claude-sonnet-5-5', max_tokens: 12000, messages:[{role:'user', content: prompt}]})});
+    const j = await r.json(); if (!r.ok) throw new Error((j.error && j.error.message) || r.status); txt = (j.content||[]).map(x=>x.text||'').join('');
+  } else {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(c.model || 'gemini-flash-latest')}:generateContent`, {method:'POST', headers:{'content-type':'application/json','x-goog-api-key':c.key},
+      body: JSON.stringify({contents:[{parts:[{text: prompt}]}], generationConfig:{temperature:0.7, responseMimeType:'application/json'}})});
+    const j = await r.json(); if (!r.ok) throw new Error((j.error && j.error.message) || r.status);
+    txt = ((j.candidates||[])[0]?.content?.parts||[]).map(x=>x.text||'').join('') }
+  txt = txt.replace(/^\s*```[a-z]*\s*|\s*```\s*$/g, '');
+  const a = txt.indexOf('{'), b = txt.lastIndexOf('}'); if (a < 0) throw new Error('AI không trả về đúng định dạng');
+  // LaTeX viết thiếu dấu \ (\frac, \times, \neq…) bị JSON hiểu thành kí tự điều khiển: nhân đôi trước khi đọc
+  const raw = txt.slice(a, b + 1).replace(/(?<!\\)\\(d?frac|tfrac|forall|times|text[a-z]*|tan|theta|to|triangle|tilde|therefore|top|tau|neq|ne|nabla|notin|neg|nu|beta|begin|bar|big[a-z]*|binom|boxed|bot|because|right[a-z]*|rangle|rho|rfloor|rceil|uparrow|underline|union)(?![a-zA-ZÀ-ỹ])/g, '\\\\$1');
+  try { return JSON.parse(raw) } catch(e) {}
+  // sửa JSON lỗi: kí tự điều khiển / xuống dòng thật nằm trong chuỗi, dấu \ lẻ
+  let out = '', inS = false;
+  for (let i = 0; i < raw.length; i++) { const ch = raw[i];
+    if (inS && ch === '\\') { const nx = raw[i+1] || ''; out += /["\\/bfnrtu]/.test(nx) ? ch + nx : '\\\\' + nx; i++; continue }
+    if (ch === '"') inS = !inS;
+    if (inS && ch < ' ') { out += ch === '\n' ? '\\n' : ch === '\t' ? '\\t' : ch === '\f' ? '\\\\f' : ch === '\b' ? '\\\\b' : ch === '\r' ? '' : ' '; continue }
+    out += ch }
+  return JSON.parse(out) }
+const SIMF = {
+  mc: '{"de": "đề bài", "phuong_an": ["A","B","C","D"], "dap_an": "A|B|C|D", "loi_giai": "lời giải"}',
+  ds: '{"de": "đề bài (phần dẫn)", "y": ["ý a","ý b","ý c","ý d"], "dap_an": "4 kí tự Đ/S theo thứ tự a,b,c,d, ví dụ ĐSSĐ", "loi_giai": "lời giải từng ý"}',
+  tln: '{"de": "đề bài", "dap_an": "kết quả là một số (số thập phân dùng dấu phẩy)", "loi_giai": "lời giải"}',
+  tl: '{"de": "đề bài", "loi_giai": "lời giải chi tiết"}' };
+function simPrompt(P, n){ const E = {imgs:{}, ni:0}; const tx = a => p2t(a, E).replace(/\[ảnh \d+\]/g, '[HÌNH]');
+  let s = 'Đề: ' + tx(P.st);
+  if (P.y === 'mc' && P.opts) s += '\n' + P.opts.map(o => o.k + '. ' + h2t(o.h, E)).join('\n') + (P.ans ? '\nĐáp án: ' + P.ans : '');
+  if (P.y === 'ds' && P.items) s += '\n' + P.items.map(o => o.k + ') ' + h2t(o.h, E)).join('\n') + (P.ans ? '\nĐáp án: ' + P.ans : '');
+  if (P.y === 'tln' && P.ans) s += '\nĐáp án: ' + h2t(P.ans, E);
+  if (P.so && P.so.length) s += '\nLời giải: ' + tx(P.so);
+  const kind = {mc:'trắc nghiệm nhiều lựa chọn (4 phương án, đúng 1 phương án)', ds:'trắc nghiệm đúng/sai (4 ý a, b, c, d)', tln:'trắc nghiệm trả lời ngắn (đáp án là một số)', tl:'tự luận'}[P.y];
+  return `Bạn là giáo viên Toán lớp ${S.grade} ở Việt Nam (chương trình GDPT 2018). Dưới đây là một câu hỏi mẫu kiểu ${kind}.
+Hãy soạn ${n} câu hỏi MỚI tương tự câu mẫu: cùng dạng toán, cùng kiểu câu, cùng mức độ khó, cùng số ý hỏi; thay số liệu và/hoặc bối cảnh cho khác nhau; không chép lại câu mẫu; các câu không trùng nhau.
+Mỗi câu phải có đáp án đúng và lời giải ngắn gọn, chính xác (tự tính lại để kiểm tra trước khi trả lời).${P.y === 'mc' ? ' Các phương án nhiễu phải hợp lí và khác đáp án đúng; vị trí đáp án đúng thay đổi giữa các câu.' : ''}
+Nếu câu mẫu có hình ([HÌNH]) thì đề mới phải nêu đủ dữ kiện bằng lời để làm được mà không cần hình.
+Trình bày: tiếng Việt; mọi công thức, kí hiệu, số trong công thức viết LaTeX đặt trong $...$; chữ đậm **...**; xuống dòng giữa các đoạn bằng \\n. Đây là JSON nên mọi dấu \\ trong LaTeX phải viết thành \\\\.
+Chỉ trả về DUY NHẤT một đối tượng JSON, không giải thích thêm, theo mẫu: {"cau": [${SIMF[P.y] || SIMF.tl}]}
+
+CÂU MẪU:
+${s}` }
+function simShape(c, y){ const E = {imgs:{}, ni:0}, s = v => String(v ?? '').trim().replace(/\\\\(?=[a-zA-Z])/g, '\\');
+  const q = {y, st: t2p(s(c.de), E), so: t2p(s(c.loi_giai), E)};
+  if (y === 'mc') { const o = (c.phuong_an || []).slice(0, 4); if (o.length < 4) return null; q.opts = ['A','B','C','D'].map((k, i) => ({k, h: t1(s(o[i]).replace(/^\*{0,2}[A-D][.):]\*{0,2}\s*/, ''), E)})); const a = s(c.dap_an).toUpperCase().replace(/[^A-D]/g, '').slice(0, 1); q.ans = a }
+  if (y === 'ds') { const o = (c.y || []).slice(0, 4); if (o.length < 4) return null; q.items = ['a','b','c','d'].map((k, i) => ({k, h: t1(s(o[i]).replace(/^\*{0,2}[a-d][.)]\*{0,2}\s*/, ''), E)})); const a = s(c.dap_an).toUpperCase().replace(/D/g, 'Đ').replace(/[^ĐS]/g, ''); q.ans = a.length === 4 ? a : '' }
+  if (y === 'tln') { const v = s(c.dap_an); q.ans = v ? (/\$|\\\(/.test(v) ? t1(v, E) : '\\(' + mEsc(v) + '\\)') : '' }
+  return q.st.length ? q : null }
+function simBtn(pid, P){ return P && P.st ? `<button class="btn" data-sim="${pid}">✨ Câu tương tự (AI)</button>` : '' }
+function simDraw(){ const box = document.getElementById('simbox'), V = S.sim; if (!box) return;
+  if (!V || V.pid !== S.pid || !V.open) { box.innerHTML = ''; return }
+  const c = aiCfg();
+  if (!c.key) { box.innerHTML = `<div class="card simc"><div class="row sp"><h3>✨ Câu hỏi tương tự bằng AI</h3><button class="mini" data-simclose>Đóng</button></div>
+    <p class="hint">Cần khoá API của dịch vụ AI. Khoá chỉ lưu trong trình duyệt của máy này, không gửi lên máy chủ của web. Khoá Google Gemini lấy miễn phí tại aistudio.google.com → Get API key.</p>
+    <form id="aif"><div class="row"><label for="aiprov">Dịch vụ</label><select id="aiprov" style="width:auto"><option value="gemini">Google Gemini (có gói miễn phí)</option><option value="claude">Claude (Anthropic)</option></select></div>
+    <div class="row" style="margin-top:8px"><input type="text" id="aikey" placeholder="Dán khoá API" autocomplete="off" style="flex:1 1 280px"><input type="text" id="aimodel" placeholder="Model (để trống = mặc định)" style="flex:0 1 240px"></div>
+    <div class="row" style="margin-top:8px"><button class="btn sm pri">Lưu khoá</button></div></form></div>`; return }
+  const items = (V.items || []).map((q, i) => { const st = V.st[i] || {};
+    let body = `<div class="pq">${paras(q.st)}</div>`;
+    if (q.y === 'mc') body += `<div class="opts">${q.opts.map(o => { let cl = ''; if (st.a) { if (q.ans && o.k === q.ans) cl = 'ok'; else if (o.k === st.a) cl = q.ans ? 'bad' : 'pick' }
+      return `<button class="opt ${cl}" data-simans="${i}.${o.k}" ${st.a?'disabled':''}><b>${o.k}</b><span>${M(o.h)}</span></button>` }).join('')}</div>${st.a && q.ans ? `<p class="verdict ${st.a===q.ans?'ok':'bad'}">${st.a===q.ans?'Chính xác!':'Chưa đúng. Đáp án đúng là '+q.ans+'.'}</p>` : ''}`;
+    if (q.y === 'ds') body += `<div class="opts">${q.items.map((it, k) => `<div class="opt" style="cursor:default"><b>${it.k}</b><span style="flex:1">${M(it.h)}</span>${st.show && q.ans ? `<span class="tag">${q.ans[k]==='Đ'?'Đúng':'Sai'}</span>` : ''}</div>`).join('')}</div>`;
+    if (q.y === 'tln' && st.show && q.ans) body += `<p><b>Đáp án:</b> ${M(q.ans)}</p>`;
+    const canSol = q.y !== 'mc' || st.a;
+    body += `<div class="row" style="margin-top:8px">${canSol ? `<button class="btn sm" data-simsol="${i}">${st.show ? 'Ẩn lời giải' : (q.y === 'tl' ? 'Lời giải' : 'Đáp án và lời giải')}</button>` : '<span class="hint">Chọn một phương án để xem lời giải.</span>'}${isAdminR() ? (st.saved ? '<span class="tag">Đã lưu vào dạng</span>' : `<button class="btn sm" data-simsave="${i}">💾 Lưu vào dạng này</button>`) : ''}</div>`;
+    if (st.show && q.so.length) body += `<div class="sol pq"><h4>Lời giải</h4>${paras(q.so)}</div>`;
+    return `<div class="card simq"><b>Câu tương tự ${i + 1}</b>${body}</div>` }).join('');
+  box.innerHTML = `<div class="card simc"><div class="row sp"><h3>✨ Câu hỏi tương tự bằng AI</h3><button class="mini" data-simclose>Đóng</button></div>
+    <form id="simf" class="row"><label for="simn">Số câu</label><input type="number" id="simn" min="1" max="10" value="${V.n}" style="width:80px"><button class="btn pri" ${V.loading?'disabled':''}>${V.items && V.items.length ? 'Tạo lại' : 'Tạo câu hỏi'}</button>
+    <span class="hint">${esc(c.prov === 'claude' ? 'Claude' : 'Gemini')} · <button type="button" class="linkb" data-aidel>đổi khoá</button></span></form>
+    <p class="hint">Câu do AI soạn, có thể có sai sót: kiểm tra lại đáp án trước khi dùng.</p>
+    ${V.loading ? `<p><span class="spin"></span> ${esc(V.loading)}</p>` : ''}${V.err ? `<div class="lockbox">${esc(V.err)}</div>` : ''}${items}</div>` }
+async function simRun(n){ const V = S.sim; const pid = V.pid;
+  const P = S.cache[(S.asgId||'') + '/' + pid] || await getProb(pid); if (!P) return;
+  V.n = n = Math.max(1, Math.min(10, n|0 || 3)); V.loading = `AI đang soạn ${n} câu…`; V.err = ''; V.items = []; V.st = []; simDraw();
+  try { const J = await aiJSON(simPrompt(P, n)); if (S.sim !== V) return;
+    const arr = Array.isArray(J) ? J : (J.cau || J.questions || []);
+    V.items = arr.map(c => simShape(c, P.y)).filter(Boolean).slice(0, n);
+    if (!V.items.length) V.err = 'AI không trả về câu hỏi dùng được. Bấm "Tạo lại".' }
+  catch(e) { console.error(e); V.err = 'Không tạo được: ' + (e.message || e) }
+  V.loading = ''; simDraw() }
+async function simSave(i){ const V = S.sim, q = V.items[i], m = S.P[V.pid]; if (!q || !m) return;
+  const doc = {t: m.t, d: m.d, y: q.y, src: 'AI – tương tự ' + label(V.pid), st: q.st, so: q.so};
+  if (q.opts) doc.opts = q.opts; if (q.items) doc.items = q.items; if (q.y !== 'tl') doc.ans = q.ans || '';
+  if (m.k === 'tn') { doc.bai = m.bai; doc.lv = m.lv || 'NB' } if (m.k === 'doc') { doc.doc = m.t; if (isTN(q.y)) doc.lv = m.lv || 'NB' }
+  const idx = cloneIdx(), d = findDang(idx, m.d), pid = m.d + 'n' + Date.now().toString(36);
+  const it = m.k !== 'tl' ? [pid, q.y, 0, doc.lv] : [pid, q.y, 0]; d.items.push(it); reflag(d, S.cfg.basicN); doc.basic = !!it[2];
+  const ok = await safe(async () => { await S.B.set('problems/' + pid, doc); await S.B.set(idxPath(m.g), idx); return true }, 'Không lưu được');
+  if (!ok) return; S.idx = S.idxs[S.grade] = idx; rebuildP(); (V.st[i] = V.st[i] || {}).saved = 1; flash('Đã lưu câu mới vào dạng.'); simDraw() }
+
 /* ---------------- chuyển bài / câu sang mục khác (Admin) ---------------- */
 const MVK = {tl:'Tự luận', tn:'Trắc nghiệm', doc:'Đề cương / Đề KT / Đề thi'};
 const htxt = h => String(h||'').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
@@ -1884,6 +1986,11 @@ document.addEventListener('click', async e => {
   if (D.edkey) { S.ed.ans = S.ed.ans === D.edkey ? '' : D.edkey; t.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.edkey === S.ed.ans)); return }
   if (D.edds) { const i = +D.edds; S.ed.dsk[i] = D.edv; t.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); return }
   if (D.edpm) { S.ed.pm = D.edpm; t.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === t)); return }
+  if (D.sim) { if (S.sim && S.sim.pid === D.sim && S.sim.open) S.sim.open = false; else S.sim = {pid: D.sim, n: (S.sim && S.sim.n) || 3, open: true, items: [], st: []}; simDraw(); if (S.sim.open) document.getElementById('simbox').scrollIntoView({behavior:'smooth', block:'start'}); return }
+  if ('simclose' in D) { if (S.sim) S.sim.open = false; simDraw(); return }
+  if (D.simans) { const [i, k] = D.simans.split('.'); (S.sim.st[i] = S.sim.st[i] || {}).a = k; simDraw(); return }
+  if (D.simsol) { const st = S.sim.st[D.simsol] = S.sim.st[D.simsol] || {}; st.show = !st.show; simDraw(); return }
+  if (D.simsave) { t.disabled = true; await simSave(+D.simsave); return }
   if ('pickmode' in D) { S.pickMode = !S.pickMode; render(); return }
   if ('mv' in D) { openMove([...S.sel]); return }
   if (D.pmv) { openMove([D.pmv]); return }
@@ -1894,7 +2001,7 @@ document.addEventListener('click', async e => {
   if (D.padd) { addEditor(D.padd, D.ptyp); return }
   if (D.pdel) { if (!t.dataset.sure) { t.dataset.sure = 1; t.textContent = 'Bấm lần nữa để xoá hẳn'; setTimeout(()=>{ if (t.isConnected) { delete t.dataset.sure; t.textContent = '🗑 Xoá bài' } }, 4000); return }
     t.disabled = true; t.textContent = 'Đang xoá…'; note('Đang xoá bài trên máy chủ…', 1); await deleteProblem(D.pdel); if (t.isConnected) { t.disabled = false; t.textContent = '🗑 Xoá bài' } return }
-  if ('aidel' in D) { localStorage.removeItem(AIKEY); render(); return }
+  if ('aidel' in D) { localStorage.removeItem(AIKEY); if (S.sim && S.sim.open && document.getElementById('simbox')) simDraw(); else render(); return }
   if ('signin' in D) { safe(() => S.B.signIn(), 'Đăng nhập không thành công'); return }
   if ('signout' in D) { await S.B.signOut(); location.hash = ''; return }
   if (D.rr) { t.parentNode.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', b===t)); $('#rcwrap').style.display = D.rr==='student' ? '' : 'none'; return }
@@ -1985,7 +2092,8 @@ document.addEventListener('submit', async e => { e.preventDefault(); const f = e
   if (f.id === 'asgf') { saveAssign(f); return }
   if (f.id === 'tlnf') { const v = $('#tlnv').value.trim(); if (!v) return; const P = S.cache[(S.asgId||'')+'/'+S.pid];
     const rec = {a: v}; if (P.ans) { rec.s = normAns(v) === normAns(P.ans) ? 1 : 3; record(S.pid, rec) } else { S.prog.done = S.prog.done||{}; S.prog.done[S.pid] = {a:v, s:0} } loadProb(); return }
-  if (f.id === 'aif') { const key = $('#aikey').value.trim(); localStorage.setItem(AIKEY, JSON.stringify({prov: $('#aiprov').value, key, model: $('#aimodel').value.trim()})); flash(key ? 'Đã lưu khoá AI trên máy này.' : 'Đã xoá khoá.'); render(); return }
+  if (f.id === 'aif') { const key = $('#aikey').value.trim(); localStorage.setItem(AIKEY, JSON.stringify({prov: $('#aiprov').value, key, model: $('#aimodel').value.trim()})); flash(key ? 'Đã lưu khoá AI trên máy này.' : 'Đã xoá khoá.'); if (S.sim && S.sim.open && document.getElementById('simbox')) simDraw(); else render(); return }
+  if (f.id === 'simf') { simRun(+$('#simn').value); return }
   if (f.id === 'planf') { const n = Math.max(0, Math.min(300, parseInt($('#bn').value,10) || 0)); applyBasic(n); return }
 });
 
